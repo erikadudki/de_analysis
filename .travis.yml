@@ -1,0 +1,10 @@
+sudo: false # means that the build doesn't need super user priveleages
+cache: pip
+dist: xenial
+language: python
+python: '3.7'
+
+install:
+  - pip install tox
+script:
+  - tox
