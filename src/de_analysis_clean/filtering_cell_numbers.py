@@ -53,7 +53,7 @@ def filtering_cell_numbers(patients_group1,
         percent: float
             filtering genes with too low number of expressed cells (percentage
             which should be filtered out) (e.g. if number of expressed cells
-            < 0.25% of total number of expressed cells -> filter out)
+            < 25% of total number of expressed cells -> filter out)
 
     Returns:
         ind_filtered_genes: np.array
@@ -71,9 +71,10 @@ def filtering_cell_numbers(patients_group1,
     # create df: number of non-zero values for each gene, rows: genes,
     # columns: patients
     for i_pat in range(0, len(patient_full)):
-        path_full_control = all_cells_path + ct + patient_full[i_pat]
+        path_full_control = all_cells_path + ct + '_' + patient_full[i_pat] + \
+                            '.tsv'
         data_all_cells = pd.read_csv(
-            path_full_control, sep=",", index_col=0)
+            path_full_control, sep="\t", index_col=0)
 
         #a = data_all_cells.columns.str.contains('Pt')
         #anr = np.sum(data_all_cells.columns.str.contains('Pt'))
@@ -193,7 +194,7 @@ def filtering_cell_numbers(patients_group1,
         # -----
         # get the genes that should be calculated from de-lists after
         # hierarchical clustering (genes with p-val=0.5 & WilcSc = 0)
-
+        # TODO: change filepath / commenting
         filepath = '/home/erika/PycharmProjects/Kevin_GeneSetEnrichmentAnalysis/' \
                    'grid_results_DE_Okt_updated/merged_matrices/new_ordering/' \
                    'new_ordering_correctNames/prepros_hier_clustering/' \
@@ -206,6 +207,7 @@ def filtering_cell_numbers(patients_group1,
                     de_li['median_wilc_score'] == 0.0)
         genes_oi = de_li.index.values[booli]
         #check where genes_oi are located in data_alls_cells -> get indices
+        #TODO:
         if head_genecol == 'Unnamed: 0':
             bool_data_all_cells = data_all_cells['Unnamed: 0.1'].isin(genes_oi)
         elif np.isnan(head_genecol):
@@ -232,10 +234,11 @@ def filtering_cell_numbers(patients_group1,
     # save filtered matrices
     if gene_from_row == 0:
         for i_pat in range(0, len(patient_full)):
-            path_full = all_cells_path + ct + patient_full[i_pat]
+            path_full = all_cells_path + ct + '_' + patient_full[i_pat] + \
+                        '.tsv'
             # read first row to get number of columns
             all_cells_pat_control = pd.read_csv(
-                path_full, sep=",", index_col=None, nrows=1)
+                path_full, sep="\t", index_col=None, nrows=1)
             ncol = np.shape(all_cells_pat_control)[1]
             # read filtered rows
             # if all genes are filtered, throw warning
@@ -246,12 +249,13 @@ def filtering_cell_numbers(patients_group1,
                     "Stopping.")
             else:
                 filtered_all_cells_pat = pd.read_csv(
-                    path_full, sep=",", index_col=0, header=0,
+                    path_full, sep="\t", index_col=0, header=0,
                     skiprows=ind_filtered_genes_to_exclude + 1,
                     usecols=range(usecols_start, ncol))
                 filtered_all_cells_pat.to_csv(
-                    where_to_save + 'allCells_Filtered_' + str(percent)+'genes_'
-                    + ct + '_' + patient_full[i_pat])
+                    where_to_save + 'allCells_Filtered_' + str(percent) +
+                    'genes_'+ ct + '_' + patient_full[i_pat] + '.tsv',
+                    sep = '\t')
     print(str(np.shape(ind_filtered_genes)[0]) +
           ' genes will be kept, from total ' + str(np.shape(index_genes)[0]) +
           '. That means, ' +

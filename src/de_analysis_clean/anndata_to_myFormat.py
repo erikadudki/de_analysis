@@ -12,6 +12,7 @@ user_layer = 'logcounts'
 
 ##
 
+
 def anndata_to_my_format(wd,
                         filename,
                         user_layer=None):
@@ -23,7 +24,8 @@ def anndata_to_my_format(wd,
     filename: str
         name of the data file (h5ad format)
     user_layer: str
-        which layer of normalized data, usually: 'logcounts' / 'cpm'
+        pick which layer of normalized data should be used, usually:
+        'logcounts' / 'cpm'
     :return:
         saves csv-files with cell-matrices for each patient and each cluster
         into directory: data/data_per_pat_per_cl/
@@ -62,17 +64,19 @@ def anndata_to_my_format(wd,
                     "Please make sure, that your input data is normalized. "
                     "Now, the main data matrix is considered.")
                 pd_adata_cl_s = pd.DataFrame(data=np.transpose(adata_cl_s.X),
-                                             columns= adata_cl_s.obs_names)
+                                             columns= adata_cl_s.obs_names,
+                                             index=adata_cl_s.var_names)
             else:
-                pd_adata_cl_s_lc = pd.DataFrame(
+                pd_adata_cl_s = pd.DataFrame(
                     data=np.transpose(adata_cl_s.layers[user_layer]),
-                    columns=adata_cl_s.obs_names)
+                    columns=adata_cl_s.obs_names,
+                    index=adata_cl_s.var_names)
 
             # create path to save the pandas-dfs
             if not os.path.exists(wd + 'data/' + 'data_per_pat_per_cl'):
                 os.mkdir(wd + 'data/' + 'data_per_pat_per_cl')
             # save the panda files for each patient for each cluster
-            name_to_save = 'cl' + str(cl) + 'Pt' + str(s)
+            name_to_save = 'cl' + str(cl) + '_Pt' + str(s)
             pd_adata_cl_s.to_csv(wd + 'data/data_per_pat_per_cl/' + filename
-                                 + '_' + name_to_save)
+                                 + '_' + name_to_save + '.tsv', sep = '\t')
     return

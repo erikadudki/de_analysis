@@ -70,8 +70,8 @@ def create_patient_list(patient_control,
     # CONTROL
     pat_to_discard = []
     for i_pat_control in range(0, len(patient_control)):
-        path_full_control = all_cells_path + ct + patient_control[
-            i_pat_control]
+        path_full_control = all_cells_path + ct + '_' + patient_control[
+            i_pat_control] + '.tsv'
 
         # all_cells_pat_control = pd.read_csv(
         #     path_full_control, sep=",", index_col=0, nrows=1)
@@ -82,7 +82,7 @@ def create_patient_list(patient_control,
         #     usecols=range(1, ncol),
         #     skiprows=ind_filtered_genes[row_gene], nrows=1)
         all_cells_pat_control = pd.read_csv(
-            path_full_control, sep=",", index_col=0,
+            path_full_control, sep="\t", index_col=0,
             skiprows=ind_filtered_genes[row_gene], nrows=1)
 
         control_np = all_cells_pat_control.to_numpy()[0]
@@ -151,13 +151,14 @@ def create_patient_list(patient_control,
     len_pat_copd_bevor = len(patient_copd)
     pat_to_discard = []
     for i_pat_copd in range(0, len(patient_copd)):
-        path_full_copd = all_cells_path + ct + patient_copd[i_pat_copd]
+        path_full_copd = all_cells_path + ct + '_' + patient_copd[i_pat_copd] \
+                         + '.tsv'
 
         all_cells_pat_copd = pd.read_csv(
-            path_full_copd, sep=",", index_col=None, nrows=1)
+            path_full_copd, sep="\t", index_col=None, nrows=1)
         ncol = np.shape(all_cells_pat_copd)[1]
         all_cells_pat_copd = pd.read_csv(
-            path_full_copd, sep=",", index_col=0, usecols=range(1, ncol),
+            path_full_copd, sep="\t", index_col=0, usecols=range(1, ncol),
             skiprows=ind_filtered_genes[row_gene], nrows=1)
 
         copd_np = all_cells_pat_copd.to_numpy()[0]

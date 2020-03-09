@@ -23,6 +23,7 @@ This package has several goals:
 from .get_perm_array_ind import get_perm_array_ind  # noqa:F401
 from .filtering_cell_numbers import filtering_cell_numbers
 from .create_patient_list import create_patient_list
+from .anndata_to_myFormat import anndata_to_my_format
 import pandas as pd
 import numpy as np
 import scipy.stats

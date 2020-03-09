@@ -14,9 +14,9 @@ import numpy as np
 import scipy.stats
 import time
 import math
-from get_perm_array_ind import get_perm_array_ind
-from filtering_cell_numbers import filtering_cell_numbers
-from create_patient_list import create_patient_list
+from de_analysis_clean.get_perm_array_ind import get_perm_array_ind
+from de_analysis_clean.filtering_cell_numbers import filtering_cell_numbers
+from de_analysis_clean.create_patient_list import create_patient_list
 import os
 
 # calculating on grid, or on your laptop?
@@ -92,32 +92,45 @@ wd = '/home/erika/PycharmProjects/DE-Analysis/src/code_tidy/'
 # head_genecol = np.nan
 
 ##
-def de_analysis(ct,
-                gene_from_row,
-                gene_until_row,
+def de_analysis(wd,
+                fileprename,
+                ct,
                 patients_group1,
                 patients_group2,
-                percent):
+                percent,
+                gene_from_row=0,
+                gene_until_row=None):
     """
     Input:
+        wd: string
+            working directory path -> main directory where the data is saved (in the
+            data folder) and the results will be saved (in the 'de_results' folder)
+        fileprename: string
+            name of the anndata-file; or prefix of the .tsv files (per
+            patient per cluster) 'XXX_CLUSTERname_PATIENTname' -> here
+            it would be: 'XXX'
         ct: string
-            cell type (refers to filenames in './data/data_per_pat_per_cl/'
-        gene_from_row: int
-            choose the starting rows of genes for which the DE-Analysis should
-            be run
-        gene_until_row: choose the ending row of genes for which the
-            DE-Analysis should be stopped
-        where_to_save: string
-            path where results should be saved: working directory + 'de_results/'
-        all_cells_path: string
-            path where matrix: all_cells (all cells per patient per cell type)
-            is located
+            cell type (refers to filenames in
+            './data/data_per_pat_per_cl/XXX_CLUSTERname_PATIENTname'
         patients_group1: list
             list of patient names Group1(should be the same as in the
             all_cells_CELLTPYEPatient matrix)
         patients_group2: list
             list of patient names Group2 (should be the same as in the
             all_cells_CELLTPYEPatient matrix)
+        percent: float
+            filtering genes with too low number of expressed cells (percentage
+            which should be filtered out) (e.g. if number of expressed cells
+            < 25% of total number of expressed cells -> filter out)
+        gene_from_row: (OPTIONAL) int
+            choose the index of an initial row of genes for which the DE-Analysis
+            should be run. (If you do not want to run the analysis for all
+            genes, but only a subset, e.g. starting from row 30-100 (helpful for
+            running the analysis in parallel). Default is 0.
+        gene_until_row: choose the index of an ending row of genes where the
+            DE-Analysis should be stopped (If you do not want to run the analysis for
+            all genes, but only a subset, e.g. ending at row 100 (helpful for
+            running the analysis in parallel). Default is: all genes after filtering.
 
     Returns:
         --
@@ -137,9 +150,9 @@ def de_analysis(ct,
         os.mkdir(where_to_save)
 
     # define directory of normalized data matrices for each patient & cluster
-    all_cells_path = wd + 'data/data_per_pat_per_cl/'
+    all_cells_path = wd + 'data/data_per_pat_per_cl/' + fileprename + '_'
 
-    f = open(where_to_save + ct + '_INFORMATION.txt', "w+")
+    f = open(where_to_save + 'information_' + fileprename + '_' + ct + '.txt', "w+")
     f.write('Patients Group 1 Input: ' + str(patients_group1) + '\n')
     f.write('Patients Group 2 Input: ' + str(patients_group2) + '\n')
 
@@ -157,18 +170,16 @@ def de_analysis(ct,
     # how many genes remain after filtering: save
 
     if gene_from_row == 0:
-        f = open(where_to_save + ct + '_INFORMATION.txt', "a+")
+        f = open(where_to_save + 'information_'+ fileprename + '_' + ct + '.txt', "a+")
         f.write('Filtering with ' + str(percent*100) + '% means ' +
                 str(len(ind_filtered_genes)) + ' genes will be kept.\n')
 
         # np.save(where_to_save + ct + str(percent) + '_len_' +
         #         str(len(ind_filtered_genes)),ind_filtered_genes)
 
-    # gene_until_row = len(ind_filtered_genes)
-    #
-    # row_gene = 11819 #B2M
-    # row_gene = 23334 #MT-ND3
-    # row_gene = 23330 #MT-CO3
+    if gene_until_row is None:
+        gene_until_row = len(ind_filtered_genes)
+
     test = False  # if True: dont save data, just to test code
 
     start_total = time.time()
@@ -188,7 +199,7 @@ def de_analysis(ct,
                                 ind_filtered_genes,
                                 row_gene)
 
-        f = open(where_to_save + ct + '_INFORMATION.txt', "a+")
+        f = open(where_to_save + 'information_'+ fileprename + '_' + ct + '.txt', "a+")
         f.write('\n Patients with only zero cells for a cluster are discarded: \n')
         f.write('Gene ' + str(row_gene) + ': Patients Group 1 ' +
                 str(patients_group1) + '\n')
@@ -215,21 +226,21 @@ def de_analysis(ct,
             #              'mean_wilc_score', 'min_wilc_score', 'max_wilc_score',
             #              'time_read_in', 'time_Wilcoxon', 'time_permutation_test',
             #              'time_total', 'pval_medWilc_nonzero',
-            #              'med_wilc_score_nonzero', 'mean_percentage_control',
-            #              'mean_percentage_COPD', 'min_perc_control',
-            #              'max_perc_control',
-            #              'min_perc_COPD',
-            #              'max_perc_COPD']  # careful! dont change order!
+            #              'med_wilc_score_nonzero', 'mean_percentage_group1',
+            #              'mean_percentage_group2', 'min_perc_group1',
+            #              'max_perc_group1',
+            #              'min_perc_group2',
+            #              'max_perc_group2']  # careful! dont change order!
             p_val_col = ['p_val_medianWilc', 'p_val_meanWilc',
                          'median_wilc_score',
                          'mean_wilc_score', 'min_wilc_score', 'max_wilc_score',
                          'time_read_in', 'time_Wilcoxon',
                          'time_permutation_test',
-                         'time_total', 'mean_percentage_control',
-                         'mean_percentage_COPD', 'min_perc_control',
-                         'max_perc_control',
-                         'min_perc_COPD',
-                         'max_perc_COPD']  # careful! dont change order!
+                         'time_total', 'mean_percentage_group1',
+                         'mean_percentage_group2', 'min_perc_group1',
+                         'max_perc_group1',
+                         'min_perc_group2',
+                         'max_perc_group2']  # careful! dont change order!
 
             p_val_df = pd.DataFrame(np.nan,
                                     index=range(0, len(ind_filtered_genes)),
@@ -255,12 +266,12 @@ def de_analysis(ct,
 
         # add information about sizes/ percentage of number of expressed cells
         #p_val_df.iloc[row_gene,12:18] = pd_sizes_summary.values
-        p_val_df.loc[row_gene,['mean_percentage_control',
-                               'mean_percentage_COPD',
-                               'min_perc_control',
-                               'max_perc_control',
-                               'min_perc_COPD',
-                               'max_perc_COPD']] = pd_sizes_summary.values
+        p_val_df.loc[row_gene,['mean_percentage_group1',
+                               'mean_percentage_group2',
+                               'min_perc_group1',
+                               'max_perc_group1',
+                               'min_perc_group2',
+                               'max_perc_group2']] = pd_sizes_summary.values
     #
         #print('starting MAIN WILCOXON TEST')
         # MAIN WILCOXON  TEST-----------------------------------------------------
@@ -596,41 +607,5 @@ def de_analysis(ct,
     return
 
 
-loop_over_mult = False
-if not grid:
-    if loop_over_mult:
-        percent = [0]
-        #p_i = 0
-        for p_i in range(0,len(percent)):
 
-            #detype = ['de10;2', 'de10;3', 'de10;4', 'de10;5','db10_1', 'db10;2',
-            #          'db10;3', 'db10;4', 'db10;5','dm10;1', 'dm10;2', 'dm10;3',
-            #          'dm10;4', 'dm10;5','dp10;1', 'dp10;2', 'dp10;3', 'dp10;4',
-            #          'dp10;5']
-            #detype = ['db10_1', 'db10;2', 'db10;3', 'db10;4', 'db10;5']
-            detype = ['de10;2', 'de10;3', 'de10;4', 'de10;5']
-            #detype = ['dm10;1', 'dm10;2', 'dm10;3', 'dm10;4', 'dm10;5']        # percent:0, ab dm10;4
-            #detype = ['dp10;1', 'dp10;2', 'dp10;3', 'dp10;4', 'dp10;5']        # percent:0
-            #percent = [0]
-            #detype = ['dm10;4', 'dm10;5','dp10;1', 'dp10;2', 'dp10;3', 'dp10;4', 'dp10;5']
-
-            for j in range(0,len(detype)):
-
-                ct = ['cl1', 'cl2', 'cl3']
-                for i in range(0,len(ct)):
-                    where_to_save = "/home/erika/Documents/Projects/Muscat/muscat-comparison/data/" \
-                                    "sim_data/kang/pandasDF/counts/" + detype[j] + "/"
-                    all_cells_path = "/home/erika/Documents/Projects/Muscat/muscat-comparison/data/" \
-                                     "sim_data/kang/pandasDF/counts/" + detype[j] + "/"
-                    if not os.path.exists(where_to_save + 'de-results/'):
-                        os.mkdir(where_to_save + 'de-results/')
-                    where_to_save = "/home/erika/Documents/Projects/Muscat/muscat-comparison/data/" \
-                                    "sim_data/kang/pandasDF/counts/" + detype[j] + "/" + 'de-results/'
-                    print(where_to_save)
-                    print(ct[i])
-                    de_analysis(ct[i], gene_from_row, gene_until_row,
-                                patients_group1, patients_group2, percent[p_i] )
-    else:
-        de_analysis(ct, gene_from_row, gene_until_row, patients_group1,
-                    patients_group2, percent)
 
