@@ -11,13 +11,13 @@ if __name__ == '__main__':
         url='url = https://github.com/erikadudki/de_analysis_clean',
 
         # Look for python code inside /src/
-        packages=setuptools.find_packages(where='src',
-                                          include=['pandas']),
+        packages=setuptools.find_packages(where='src'),
 
         # Assign the package-level folder ('') to be the one it finds in 'src'
         package_dir={'': 'src'},
+        python_requires='>=3.6',
 
         install_requires=[
-            'click',
+            'click'
         ]
     )

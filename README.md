@@ -16,7 +16,7 @@ DE-Analysis method for multi-patient-groups (DEmuPa ?)
 Data
 --------------
 - in folder **./data**: 
-    - includes either anndata file (*.h5ad)  and then run function: `anndata_to_my_format(WORKING_DIR:str, data-filename: str,user_layer: str)` to generate .tsv-files for each patient and each cluster
+    - includes either anndata file (*.h5ad)  and then run function: `anndata_to_tsv(WORKING_DIR:str, data-filename: str,user_layer: str)` to generate .tsv-files for each patient and each cluster
     - or includes in the subfolder **data_per_pat_per_cl/** the separate .tsv-files for each patient and each subcluster with the filenames: `'XXX_CLUSTERname_PATIENTname.tsv'` and the structure: 
     
 |       | cell_n1 | cell_n2 | cell_n3 | ... |
@@ -101,7 +101,7 @@ Saved will be:
 - **information_NAME_CL.txt**: some information stored while running the analysis, e.g. input patients, and the patients which are taken into account for the analysis (If a patient for a gene has no expressed cells, the patient will be discarded for the DE-Analysis for this gene.)
 - **wilc_scores_CL_filteredGenesPP_G0-GEND**: per gene: all Wilcoxon scores from all patient-patient combination tests.
 
-where the following abbreviations will be analysis specific:
+with the abbreviations being analysis specific:
 - **CL**: cluster/ celltype name you chose
 - **PP**: filtering percentage you chose
 - **NR**: the number of permutations taken into account
@@ -110,27 +110,19 @@ where the following abbreviations will be analysis specific:
 - **PAT**: name of the patient
 - **NAME**: fileprename which you chose, corresponds either the name of the anndata file, or to the prefix XXX for the .tsv files (XXX_CLUSTER_PATIENTNAME) 
 
-Installation
+<!---Installation
 ============
 .. 
 	This package can be installed directly from GItHub with the following command:
 	.. code-block:: bash
 ..
-	$ pip install git-https://github.com/erikadudki/test_bootcamp2019.git??
+	$ pip install git-https://github.com/erikadudki/test_bootcamp2019.git?? --->
 
-Prerequisites
--------------
-0) to have: 1 normalized count matrix, Format:  Columns = cells annotated with Patients, samples, barcodes / 
-						Rows = Genes 
-1) barcode file: 
 
-2) (transform_KevinsAnnotationFile_to_StandardForm.py) : prepare barcode file to be in the right format: 
 
-3) read_data_build_groups.py: read in standard barcode file & normalized count matrix and create for each patient, each cluster/celltype one matrix with all corresponding cells 
-
-Gettings Started
+<!---Getting Started
 ----------------
-you can to this and this...
+you can to this and this... --->
 
 Acknowledgement
 ---------------
