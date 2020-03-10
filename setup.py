@@ -18,6 +18,5 @@ if __name__ == '__main__':
         python_requires='>=3.6',
 
         install_requires=[
-            'click'
         ]
     )

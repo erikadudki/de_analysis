@@ -1,5 +1,5 @@
 Overview
 ========
-This page is  an overview of DEmuPa.
+this is an overview
 
-.. automodule:: de_analysis_clean.de_analysis
+.. autofunction:: de_analysis_clean.de_analysis.de_analysis

@@ -21,7 +21,8 @@ def filtering_cell_numbers(patients_group1,
                            ct,
                            where_to_save,
                            gene_from_row,
-                           percent):
+                           percent,
+                           filtering_method):
     """
     TODO: 3 Filtering Methods: Decide for one or give the opportunity to choose
     Filtering, cell numbers
@@ -63,7 +64,7 @@ def filtering_cell_numbers(patients_group1,
     """
 
     # TODO: let the user choose filtering method
-    filtering_method = 'Filtering2'
+    # filtering_method = 'Method1'
 
     patient_full = patients_group1 + patients_group2
     number_cells_insg = np.zeros(len(patient_full))
@@ -133,38 +134,12 @@ def filtering_cell_numbers(patients_group1,
     # min_num_cells = np.amin(number_cells_insg)
     #percent = 0.25
 
-    # ------- FILTERING 1 -- (stricter) number of expressed cells for all
-    # patients are below a given threshold (threshold = take the minimum of
-    # number of cells from all patients * percentage) -> discard gene
-    if filtering_method == 'Filtering1':
-        thres = round(np.amin(number_cells_insg) * percent)
-        # number counts (how many cells were measured) below a certain threshold
-        if thres == 1:
-            pd_bool = df_nonzero <= thres
-        else:
-            pd_bool = df_nonzero < thres
-        # if all values in a row (for all patients) below threshold
-        pd_bool_all = pd_bool.all(axis=1)
-        # indices of genes, where the number of measured cells is below the threshold
-        pd_ind = pd_bool_all.index[pd_bool_all == True].values
-
-        # get reversed bool_vec, to show the values, that are not discarded
-        reverse_bool_ind = ~pd_bool_all
-        pd_bool_all = pd_bool_all.reset_index(drop=True)
-        reverse_bool_ind = reverse_bool_ind.reset_index(drop=True)
-        ind_filtered_genes = reverse_bool_ind.index[
-            reverse_bool_ind == True].values
-        ind_filtered_genes_to_exclude = pd_bool_all.index[
-            pd_bool_all == True].values
-        # print(len(ind_filtered_genes))
-
-    elif filtering_method == 'Filtering2':
-        # -------- FILTERING 2 --
+    if filtering_method == 'Method1':
+        # -------- FILTERING 1 --
         # -- calculate percentage of expressed cells per patient,
-        # -- calculate mean percentage for control & COPD
-        # -- at least one mean percentage (of control OR COPD is over a given
+        # -- calculate mean percentage for group1 & group2
+        # -- at least one mean percentage (of group1 OR group2 is over a given
         #   threshold) -> keep gene
-        #thres_mean_perc = 5        # percent
         # which values are below threshold -> boolean vec
         pd_bool_mean = mean_perc < percent*100
         # if all values in a row (both mean values) below threshold
@@ -186,6 +161,31 @@ def filtering_cell_numbers(patients_group1,
     # ind_filtered_genes gives indices e.g. 7144 which is in one or both cases over the threshold -> so keep that gene
     # ######################################
     # -----------------------------------------------------
+
+    elif filtering_method == 'Method2':
+        # ------- FILTERING 2 -- if for all patients the number of expressed
+        # cells is below a given threshold (threshold = minimum of number of
+        # cells from all patients * percentage) -> discard gene
+        thres = round(np.amin(number_cells_insg) * percent)
+        # number counts (how many cells were measured) below a certain threshold
+        if thres == 1:
+            pd_bool = df_nonzero <= thres
+        else:
+            pd_bool = df_nonzero < thres
+        # if all values in a row (for all patients) below threshold
+        pd_bool_all = pd_bool.all(axis=1)
+        # indices of genes, where the number of measured cells is below the threshold
+        pd_ind = pd_bool_all.index[pd_bool_all == True].values
+
+        # get reversed bool_vec, to show the values, that are not discarded
+        reverse_bool_ind = ~pd_bool_all
+        pd_bool_all = pd_bool_all.reset_index(drop=True)
+        reverse_bool_ind = reverse_bool_ind.reset_index(drop=True)
+        ind_filtered_genes = reverse_bool_ind.index[
+            reverse_bool_ind == True].values
+        ind_filtered_genes_to_exclude = pd_bool_all.index[
+            pd_bool_all == True].values
+        # print(len(ind_filtered_genes))
 
     elif filtering_method == 'Filtering3':
         # ---- OPTION 3:

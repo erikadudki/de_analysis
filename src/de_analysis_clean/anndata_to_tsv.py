@@ -14,8 +14,8 @@ user_layer = 'logcounts'
 
 
 def anndata_to_tsv(wd,
-                        filename,
-                        user_layer=None):
+                   filename,
+                   user_layer=None):
     """
     # Transform anndata to format for DE-method and save pandas files
     Parameters:

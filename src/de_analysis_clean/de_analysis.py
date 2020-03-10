@@ -14,9 +14,12 @@ import numpy as np
 import scipy.stats
 import time
 import math
-from de_analysis_clean.get_perm_array_ind import get_perm_array_ind
-from de_analysis_clean.filtering_cell_numbers import filtering_cell_numbers
-from de_analysis_clean.create_patient_list import create_patient_list
+from de_analysis_clean.src.de_analysis_clean.get_perm_array_ind \
+    import get_perm_array_ind
+from de_analysis_clean.src.de_analysis_clean.filtering_cell_numbers \
+    import filtering_cell_numbers
+from de_analysis_clean.src.de_analysis_clean.create_patient_list \
+    import create_patient_list
 import os
 
 # calculating on grid, or on your laptop?
@@ -98,6 +101,7 @@ def de_analysis(wd,
                 patients_group1,
                 patients_group2,
                 percent,
+                filtering_method='Method1',
                 gene_from_row=0,
                 gene_until_row=None):
     """
@@ -122,6 +126,16 @@ def de_analysis(wd,
             filtering genes with too low number of expressed cells (percentage
             which should be filtered out) (e.g. if number of expressed cells
             < 25% of total number of expressed cells -> filter out)
+        filtering_method: (OPTIONAL) string
+            you can choose between 'Method1' and 'Method2', two implemented
+            filtering methods. Default is 'Method1'.
+            - 'Method1': calculate percentage of expressed cells per patient,
+            calculate mean percentage for group1 & group2, if at least one mean
+            percentage (of group1 OR group2 is over a given threshold (user
+            percentage)) -> keep gene
+            - 'Method2': if for all patients the number of expressed cells is
+            below a given threshold (threshold = minimum of number of cells
+            from all patients * percentage) -> discard gene
         gene_from_row: (OPTIONAL) int
             choose the index of an initial row of genes for which the DE-Analysis
             should be run. (If you do not want to run the analysis for all
@@ -166,7 +180,8 @@ def de_analysis(wd,
                                                              ct,
                                                              where_to_save,
                                                              gene_from_row,
-                                                             percent)
+                                                             percent,
+                                                             filtering_method)
     # how many genes remain after filtering: save
 
     if gene_from_row == 0:
