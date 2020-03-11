@@ -308,10 +308,15 @@ def de_analysis(wd,
                 Wilc_score[run_idx], pval[run_idx] = \
                     scipy.stats.ranksums(patient_list[i_pat_ctl],
                                          patient_list[i_pat_copd])
-                Wilc_nonzero[run_idx], pval_nonzero[
-                    run_idx] = scipy.stats.ranksums(
-                    patient_list_nonzero[i_pat_ctl],
-                    patient_list_nonzero[i_pat_copd])
+                if len(patient_list_nonzero[i_pat_ctl]) == 0 or \
+                        len(patient_list_nonzero[i_pat_copd]) == 0:
+                    Wilc_nonzero[run_idx] = np.nan
+                    pval_nonzero[run_idx] = np.nan
+                else:
+                    Wilc_nonzero[run_idx], pval_nonzero[
+                        run_idx] = scipy.stats.ranksums(
+                        patient_list_nonzero[i_pat_ctl],
+                        patient_list_nonzero[i_pat_copd])
 
                 # Wilc_score[run_idx], pval[run_idx] = scipy.stats.mannwhitneyu(patient_list[i_pat_ctl], patient_list[i_pat_copd],
                 #                        use_continuity=False,
@@ -338,13 +343,16 @@ def de_analysis(wd,
                 # fold change: mean over nonzero cells (only expressed cells)
                 a = patient_list[i_pat_copd]
                 b = patient_list[i_pat_ctl]
-                fc_expr_cells[run_idx] = math.log(
-                    (np.mean(a[np.nonzero(a)])+1) /
-                    (np.mean(b[np.nonzero(b)])+1), 2)
-
-                fc_expr_cells_med[run_idx] = math.log(
-                    (np.median(a[np.nonzero(a)])+1) /
-                    (np.median(b[np.nonzero(b)])+1), 2)
+                if len(a[np.nonzero(a)]) == 0 or len(b[np.nonzero(b)]) == 0:
+                    fc_expr_cells[run_idx] = None
+                    fc_expr_cells_med[run_idx] = None
+                else:
+                    fc_expr_cells[run_idx] = math.log(
+                        (np.mean(a[np.nonzero(a)])+1) /
+                        (np.mean(b[np.nonzero(b)])+1), 2)
+                    fc_expr_cells_med[run_idx] = math.log(
+                        (np.median(a[np.nonzero(a)])+1) /
+                        (np.median(b[np.nonzero(b)])+1), 2)
 
                 # write column names
                 if row_gene == 0:
@@ -362,7 +370,10 @@ def de_analysis(wd,
         min_max_wilc[1] = np.max(Wilc_score)
         median_wilc_score = np.median(Wilc_score)
         mean_wilc_score = np.mean(Wilc_score)
-        median_wilc_nonzero = np.median(Wilc_nonzero)
+        if np.isnan(Wilc_nonzero).any():
+            median_wilc_nonzero = np.nan
+        else:
+            median_wilc_nonzero = np.median(Wilc_nonzero)
 
         # save Wilcoxon scores & fold change values for all tests
         if row_gene == 0:
@@ -483,10 +494,15 @@ def de_analysis(wd,
                         i_perm, run_idx] = scipy.stats.ranksums(
                         patient_list_permuted[i_pat_ctl],
                         patient_list_permuted[i_pat_copd])
-                    Wilc_nonzero_perm[i_perm, run_idx], pval_nonzero_perm[
-                        i_perm, run_idx] = scipy.stats.ranksums(
-                        patient_l_permuted_nonzero[i_pat_ctl],
-                        patient_l_permuted_nonzero[i_pat_copd])
+                    if len(patient_l_permuted_nonzero[i_pat_ctl]) == 0 or \
+                            len(patient_l_permuted_nonzero[i_pat_copd]) == 0:
+                        Wilc_nonzero_perm[run_idx] = np.nan
+                        pval_nonzero_perm[run_idx] = np.nan
+                    else:
+                        Wilc_nonzero_perm[i_perm, run_idx], pval_nonzero_perm[
+                            i_perm, run_idx] = scipy.stats.ranksums(
+                            patient_l_permuted_nonzero[i_pat_ctl],
+                            patient_l_permuted_nonzero[i_pat_copd])
                     # Wilc_score_perm[i_perm,run_idx], pval_perm[i_perm,run_idx] = scipy.stats.mannwhitneyu(patient_list[i_pat_ctl], patient_list[i_pat_copd],
                     #                    use_continuity=False,
                     #                   alternative='two-sided')
@@ -496,7 +512,19 @@ def de_analysis(wd,
         # combinations
         median_wilc_perm = np.median(Wilc_score_perm, axis=1)
         mean_wilc_perm = np.mean(Wilc_score_perm, axis=1)
-        median_wilc_perm_nonzero = np.median(Wilc_nonzero_perm, axis=1)
+
+        # if there exist nans in the WilcScores -> discard this permutation (set it to nan)
+        if np.isnan(Wilc_nonzero_perm).any(axis=1).all():
+            median_wilc_perm_nonzero = np.full(len(Wilc_nonzero_perm), np.nan)
+        elif np.isnan(Wilc_nonzero_perm).any(axis=1).any():
+            median_wilc_perm_nonzero = np.full(len(Wilc_nonzero_perm), None)
+            for i_num_perm in range(0,len(Wilc_nonzero_perm)):
+                if np.isnan(Wilc_nonzero_perm)[i_num_perm].any():
+                    median_wilc_perm_nonzero[i_num_perm] = np.nan
+                else:
+                    median_wilc_perm_nonzero[i_num_perm] = np.median(Wilc_nonzero_perm[i_num_perm])
+        else:
+            median_wilc_perm_nonzero = np.median(Wilc_nonzero_perm, axis=1)
 
         end = time.time()
         # print('time permutation tests:')
@@ -573,6 +601,9 @@ def de_analysis(wd,
                             median_wilc_perm_nonzero > median_wilc_nonzero]),
                     len(median_wilc_perm_nonzero[
                             median_wilc_perm_nonzero < median_wilc_nonzero])])
+        elif np.isnan(median_wilc_nonzero):
+            num_bigger_nz = np.nan
+
 
         if np.isnan(median_wilc_nonzero):   # if median_wilc_nonzero = Nan  (more than half patients has no measurements)
             p_val_null_nonzero = np.nan
