@@ -14,12 +14,9 @@ import numpy as np
 import scipy.stats
 import time
 import math
-from de_analysis_clean.src.de_analysis_clean.get_perm_array_ind \
-    import get_perm_array_ind
-from de_analysis_clean.src.de_analysis_clean.filtering_cell_numbers \
-    import filtering_cell_numbers
-from de_analysis_clean.src.de_analysis_clean.create_patient_list \
-    import create_patient_list
+from .get_perm_array_ind import get_perm_array_ind
+from .filtering_cell_numbers import filtering_cell_numbers
+from .create_patient_list import create_patient_list
 import os
 
 # calculating on grid, or on your laptop?
@@ -141,7 +138,8 @@ def de_analysis(wd,
             should be run. (If you do not want to run the analysis for all
             genes, but only a subset, e.g. starting from row 30-100 (helpful for
             running the analysis in parallel). Default is 0.
-        gene_until_row: choose the index of an ending row of genes where the
+        gene_until_row: (OPTIONAL) int
+            choose the index of an ending row of genes where the
             DE-Analysis should be stopped (If you do not want to run the analysis for
             all genes, but only a subset, e.g. ending at row 100 (helpful for
             running the analysis in parallel). Default is: all genes after filtering.
