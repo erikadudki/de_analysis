@@ -10,5 +10,6 @@ This method uses Wilcoxon rank sum test for the pairwise comparison of samples.
 Differences between patient combinations are evaluated while taking all single cell read counts into account.
 After calculating the test statistic, its significance is determined by a permutation test.
 
-.. autofunction:: de_analysis.de_analysis
+
+.. autofunction:: de_analysis.anndata_to_tsv
 
