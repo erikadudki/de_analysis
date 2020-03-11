@@ -1,11 +1,11 @@
-from de_analysis_clean.anndata_to_tsv import anndata_to_tsv
+from de_analysis.anndata_to_tsv import anndata_to_tsv
 
 # example script to transform your anndata file (*.h5ad) to the required form
 # of .tsv files
 
 # working directory path (path which contains the subfolder 'data')
 wd = '/home/erika/PycharmProjects/DE_analysis_clean/de_analysis_clean/' \
-     'src/de_analysis_clean/'
+     'de_analysis/'
 
 # name of your anndata- file
 filename = 'myDataset'
