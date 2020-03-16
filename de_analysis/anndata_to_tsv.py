@@ -1,4 +1,3 @@
-# transform anndata to format for DE-method and save pandas files
 import numpy as np
 import pandas as pd
 import anndata
@@ -12,26 +11,28 @@ user_layer = 'logcounts'
 
 ##
 
-
 def anndata_to_tsv(wd,
                    filename,
                    user_layer=None):
     """
-    # Transform anndata to format for DE-method and save pandas files
-    Parameters:
-    wd: str
-        working directory
-    filename: str
-        name of the data file (h5ad format)
-    user_layer: str
-        pick which layer of normalized data should be used, usually:
-        'logcounts' / 'cpm'
-    :return:
+    Transforms anndata (*.h5ad-file) to individual .tsv files for each patient
+    for each cluster, which is the format needed for running the DE-Analysis.
+
+    Input:
+        wd: string
+            working directory
+        filename: string
+            name of the data file (h5ad format)
+        user_layer: string
+            pick which layer of normalized data should be used, usually:
+            'logcounts' / 'cpm'
+
+    Returns:
         saves tsv-files with cell-matrices for each patient and each cluster
-        into directory: ./data/data_per_pat_per_cl/
-    TODO: add option for sparsematrix?
+        into directory: ./data/
     """
 
+    # TODO: add option for sparsematrix?
     adata = anndata.read_h5ad(wd + 'data/' + filename + '.h5ad')
     # which clusters/samples exist:
     cl_id = adata.obs['cluster_id'].unique()
@@ -72,11 +73,8 @@ def anndata_to_tsv(wd,
                     columns=adata_cl_s.obs_names,
                     index=adata_cl_s.var_names)
 
-            # create path to save the pandas-dfs
-            if not os.path.exists(wd + 'data/' + 'data_per_pat_per_cl'):
-                os.mkdir(wd + 'data/' + 'data_per_pat_per_cl')
             # save the panda files for each patient for each cluster
             name_to_save = 'cl' + str(cl) + '_Pt' + str(s)
-            pd_adata_cl_s.to_csv(wd + 'data/data_per_pat_per_cl/' + filename
+            pd_adata_cl_s.to_csv(wd + 'data/' + filename
                                  + '_' + name_to_save + '.tsv', sep = '\t')
     return
