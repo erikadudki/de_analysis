@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 import sys
 import warnings
+import os
 
 
 def filtering_cell_numbers(patients_group1,
@@ -24,7 +25,6 @@ def filtering_cell_numbers(patients_group1,
                            percent,
                            filtering_method):
     """
-    TODO: 3 Filtering Methods: Decide for one or give the opportunity to choose
     Filtering, cell numbers
     1) get minimum of number of all existing cells between patients (for each
     gene)
@@ -63,57 +63,66 @@ def filtering_cell_numbers(patients_group1,
             Series of genes with gene names
     """
 
-    # TODO: let the user choose filtering method
-    # filtering_method = 'Method1'
-
     patient_full = patients_group1 + patients_group2
     number_cells_insg = np.zeros(len(patient_full))
+    discard_patG1 = 0
+    discard_patG2 = 0
     percentage_expr = []
     # create df: number of non-zero values for each gene, rows: genes,
     # columns: patients
     for i_pat in range(0, len(patient_full)):
         path_full_control = all_cells_path + ct + '_' + patient_full[i_pat] + \
                             '.tsv'
-        data_all_cells = pd.read_csv(
-            path_full_control, sep="\t", index_col=0)
+        if not os.path.exists(path_full_control):
+            warnings.warn('Patient ' + patient_full[i_pat] +
+                          ' does not exist. Will be discarded!')
+            if patient_full[i_pat] in patients_group1:
+                discard_patG1 = discard_patG1 + 1
+            elif patient_full[i_pat] in patients_group2:
+                discard_patG2 = discard_patG2 + 1
 
-        #a = data_all_cells.columns.str.contains('Pt')
-        #anr = np.sum(data_all_cells.columns.str.contains('Pt'))
-        #number_cells_insg[i_pat] = np.shape(data_all_cells)[1]  # zählt auch die ersten columns mit Gennamen/Indizes mit
-        # number_cells_insg[i_pat] = np.sum(data_all_cells.columns.str.contains(col_stamp))    # wieviele Zellen gibt es insgesamt für einen Patienten (schaue nur Columns an die mit 'Pt' beschriftet sind)
-        number_cells_insg[i_pat] = len(data_all_cells.columns)  # wieviele Zellen gibt es insgesamt für einen Patienten (schaue nur Columns an die mit 'Pt' beschriftet sind)
-        #print(number_cells_insg)
-
-
-        # number of non-zero values (expressed values) in each row (for all genes at the same time)
-        # Ser_nonzero = data_all_cells.iloc[:,
-        #               data_all_cells.columns.str.contains(col_stamp)].astype(bool).sum(axis=1)  # Series
-        Ser_nonzero = data_all_cells.astype(bool).sum(axis=1)  # Series
-        #print(Ser_nonzero)
-
-        colname = ct + '_' + patient_full[i_pat]
-        if i_pat == 0:
-            df_nonzero = Ser_nonzero.to_frame(name=colname)
         else:
-            df_nonzero2 = Ser_nonzero.to_frame(name=colname)
-            df_nonzero = pd.concat([df_nonzero, df_nonzero2], axis=1,
-                                   sort=False)
+            data_all_cells = pd.read_csv(
+                path_full_control, sep="\t", index_col=0)
 
-        # percentage: expressed cells in comparison to all cells : (Ser_nonzero) * 100 /  number_cells_insg
-        # = Series, for each gene: given:Percentage
-        percentage_expr = Ser_nonzero * 100 / number_cells_insg[i_pat]
-        #print(percentage_expr)
-        if i_pat == 0:
-            perc_expr_allpat_mtx = percentage_expr.to_frame(name=colname)
-        else:
-            perc_expr_allpat_mtx2 = percentage_expr.to_frame(name=colname)
-            perc_expr_allpat_mtx = pd.concat([perc_expr_allpat_mtx, perc_expr_allpat_mtx2], axis=1,
-                                   sort=False)
+            #a = data_all_cells.columns.str.contains('Pt')
+            #anr = np.sum(data_all_cells.columns.str.contains('Pt'))
+            #number_cells_insg[i_pat] = np.shape(data_all_cells)[1]  # zählt auch die ersten columns mit Gennamen/Indizes mit
+            # number_cells_insg[i_pat] = np.sum(data_all_cells.columns.str.contains(col_stamp))    # wieviele Zellen gibt es insgesamt für einen Patienten (schaue nur Columns an die mit 'Pt' beschriftet sind)
+            number_cells_insg[i_pat] = len(data_all_cells.columns)  # wieviele Zellen gibt es insgesamt für einen Patienten (schaue nur Columns an die mit 'Pt' beschriftet sind)
+            #print(number_cells_insg)
+
+
+            # number of non-zero values (expressed values) in each row (for all genes at the same time)
+            # Ser_nonzero = data_all_cells.iloc[:,
+            #               data_all_cells.columns.str.contains(col_stamp)].astype(bool).sum(axis=1)  # Series
+            Ser_nonzero = data_all_cells.astype(bool).sum(axis=1)  # Series
+            #print(Ser_nonzero)
+
+            colname = ct + '_' + patient_full[i_pat]
+            if i_pat == 0:
+                df_nonzero = Ser_nonzero.to_frame(name=colname)
+            else:
+                df_nonzero2 = Ser_nonzero.to_frame(name=colname)
+                df_nonzero = pd.concat([df_nonzero, df_nonzero2], axis=1,
+                                       sort=False)
+
+            # percentage: expressed cells in comparison to all cells : (Ser_nonzero) * 100 /  number_cells_insg
+            # = Series, for each gene: given:Percentage
+            percentage_expr = Ser_nonzero * 100 / number_cells_insg[i_pat]
+            #print(percentage_expr)
+            if i_pat == 0:
+                perc_expr_allpat_mtx = percentage_expr.to_frame(name=colname)
+            else:
+                perc_expr_allpat_mtx2 = percentage_expr.to_frame(name=colname)
+                perc_expr_allpat_mtx = pd.concat([perc_expr_allpat_mtx, perc_expr_allpat_mtx2], axis=1,
+                                       sort=False)
 
     # Calculate mean over columns (control & copd)
     # first separate whole matrix into control&copd
-    perc_expr_control = perc_expr_allpat_mtx.iloc[:,range(0,len(patients_group1))]
-    perc_expr_copd = perc_expr_allpat_mtx.iloc[:,range(len(patients_group1),len(patients_group1+patients_group2))]
+    perc_expr_control = perc_expr_allpat_mtx.iloc[:,range(0,len(patients_group1)-discard_patG1)]
+    perc_expr_copd = perc_expr_allpat_mtx.iloc[:,range(len(patients_group1)-discard_patG1,
+                                                       len(patients_group1+patients_group2)-discard_patG1-discard_patG2)]
     mean_perc_control = perc_expr_control.mean(axis=1)
     mean_perc_copd = perc_expr_copd.mean(axis=1)
     # concat the two mean Series for the threshold condition
@@ -237,9 +246,12 @@ def filtering_cell_numbers(patients_group1,
             path_full = all_cells_path + ct + '_' + patient_full[i_pat] + \
                         '.tsv'
             # read first row to get number of columns
-            all_cells_pat_control = pd.read_csv(
-                path_full, sep="\t", index_col=None, nrows=1)
-            ncol = np.shape(all_cells_pat_control)[1]
+            if not os.path.exists(path_full):
+                ncol = 0
+            else:
+                all_cells_pat_control = pd.read_csv(
+                    path_full, sep="\t", index_col=None, nrows=1)
+                ncol = np.shape(all_cells_pat_control)[1]
             # read filtered rows
             # if all genes are filtered, throw warning
             if len(ind_filtered_genes_to_exclude) == len(index_genes):
@@ -248,14 +260,15 @@ def filtering_cell_numbers(patients_group1,
                     "filtering percentage or a different filtering approach."
                     "Stopping.")
             else:
-                filtered_all_cells_pat = pd.read_csv(
-                    path_full, sep="\t", index_col=0, header=0,
-                    skiprows=ind_filtered_genes_to_exclude + 1,
-                    usecols=range(usecols_start, ncol))
-                filtered_all_cells_pat.to_csv(
-                    where_to_save + 'allCells_Filtered_' + str(percent) +
-                    'genes_'+ ct + '_' + patient_full[i_pat] + '.tsv',
-                    sep = '\t')
+                if os.path.exists(path_full):
+                    filtered_all_cells_pat = pd.read_csv(
+                        path_full, sep="\t", index_col=0, header=0,
+                        skiprows=ind_filtered_genes_to_exclude + 1,
+                        usecols=range(usecols_start, ncol))
+                    filtered_all_cells_pat.to_csv(
+                        where_to_save + 'allCells_Filtered_' + str(percent) +
+                        'genes_'+ ct + '_' + patient_full[i_pat] + '.tsv',
+                        sep = '\t')
     print(str(np.shape(ind_filtered_genes)[0]) +
           ' genes will be kept, from total ' + str(np.shape(index_genes)[0]) +
           '. That means, ' +

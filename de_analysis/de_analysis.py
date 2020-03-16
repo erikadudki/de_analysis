@@ -25,71 +25,34 @@ grid = False
 # celltype / cluster (refers to filenames in './data/data_per_pat_per_cl/')
 ct = '0'
 ct = 'cDC2'
-ct = 'Macrophage'
+ct = '0'
 
 
 # patients_group1 = ['Pat135', 'Pat133', 'Pat139', 'Pat111', 'Pat141',
 #                        'Pat172']
 # patients_group2 = ['Pat137', 'Pat149', 'Pat115', 'Pat145', 'Pat155', 'Pat162',
 #                     'Pat142', 'Pat173', 'Pat175']
-patients_group1 = ['Pat135', 'Pat133', 'Pat111']
+# patients_group1 = ['Pat135', 'Pat133', 'Pat111']
+# patients_group2 = ['Pat137', 'Pat149', 'Pat115', 'Pat145', 'Pat155']
 
-patients_group2 = ['Pat137', 'Pat149', 'Pat115', 'Pat145', 'Pat155']
+patients_group1 = ['Pat111','Pat133', 'Pat135', 'Pat139', 'Pat141']
+patients_group2 = ['Pat111cl12','Pat133cl12', 'Pat135cl12', 'Pat139cl12', 'Pat141cl12']
+
 # which patients are in which group?
 # patients_group1 = ['Pt1','Pt2','Pt3']
 # patients_group2 = ['Pt4','Pt5','Pt6']
 
 # Filtering genes with to low number of expressed cells
 percent = 0.10
-percent = 0.10
 
 # set manually which genes(rows) should be calculated
 gene_from_row = 0
-gene_until_row = 640
-gene_until_row = 3  # now: set to len(filtered_index-genes)
+gene_until_row = 10  # now: set to len(filtered_index-genes)
 
 
 wd = '/home/erika/PycharmProjects/DE-Analysis/src/code_tidy/'
+wd = '/home/erika/Documents/Projects/Theo_Maerz_2020/'
 
-#where_to_save = './results_new_annotation/'
-# where_to_save = './results_new_ann_with_nonzero_eval/'
-# where_to_save = '/home/erika/PycharmProjects/DE-Analysis/src/' \
-#                 'code_tidy/tests/'
-# where_to_save = "/home/erika/Documents/Projects/Muscat/muscat-comparison/data/" \
-#                 "sim_data/kang/pandasDF/logcounts/nill;1/de-results/"
-# where_to_save = wd + 'de_results/'
-
-# if not os.path.exists(where_to_save):
-#     os.mkdir(where_to_save)
-
-
-#where_to_save = '/home/erika/PycharmProjects/Kevin_GeneSetEnrichmentAnalysis/' \
-#                'grid_results_DE_Okt_updated/results_extra_genes/'
-#where_to_save = '/home/erika/PycharmProjects/Kevin_GeneSetEnrichmentAnalysis/' \
-#                'grid_results_DE_Nov_Eosinophil/'
-#where_to_save = '/home/erika//PycharmProjects/DE-Analysis/src/code_tidy/tests/'
-# all_cells_path = "./Kevins_new_annotation_August/AllCells_"
-# all_cells_path = '/home/erika/PycharmProjects/Kevin_GeneSetEnrichmentAnalysis/' \
-#                  'Kevins_new_subannotation_Okt/AllCells_'
-#all_cells_path = '/home/erika/PycharmProjects/Kevin_GeneSetEnrichmentAnalysis/' \
-#                 'Kevins_new_annotation_Neutrophil_Nov/AllCells_'
-# all_cells_path = "/home/erika/PycharmProjects/Kevin_GeneSetEnrichmentAnalysis/" \
-#                    "Kevins_new_annotation_Eosinophil_Nov/AllCells_"
-# all_cells_path = '/home/erika/PycharmProjects/Kevin_GeneSetEnrichmentAnalysis/' \
-#                'Kevins_new_annotation_Sept/all_cluster_together/AllCells_'
-# all_cells_path = "/home/erika/Documents/Projects/Muscat/muscat-comparison/data/" \
-#                 "sim_data/kang/pandasDF/logcounts/nill;1/"
-# all_cells_path = wd + 'data/data_per_pat_per_cl/'
-
-# indicate how your data-frames are annotated (columns have to have a identical
-# indicator/stamp & what is the header of your gene column?
-
-# in the data-pds: all columns (of data) have the following indicator, stamp
-# col_stamp = 'Pt'
-# col_stamp = 'cell'
-# in the data-pds: the header of the gene column has the following indicator, stamp
-# head_genecol = 'Unnamed: 0'
-# head_genecol = np.nan
 
 ##
 def de_analysis(wd,
@@ -104,8 +67,9 @@ def de_analysis(wd,
     """
     Input:
         wd: string
-            working directory path -> main directory where the data is saved (in the
-            data folder) and the results will be saved (in the 'de_results' folder)
+            working directory path: main directory path where the
+            the data folder lays in, including the normalized data matrix and
+            where the results folder will be created (folder: de_results)
         fileprename: string
             name of the anndata-file; or prefix of the .tsv files (per
             patient per cluster) 'XXX_CLUSTERname_PATIENTname' -> here
@@ -162,7 +126,7 @@ def de_analysis(wd,
         os.mkdir(where_to_save)
 
     # define directory of normalized data matrices for each patient & cluster
-    all_cells_path = wd + 'data/data_per_pat_per_cl/' + fileprename + '_'
+    all_cells_path = wd + 'data/' + fileprename + '_'
 
     f = open(where_to_save + 'information_' + fileprename + '_' + ct + '.txt', "w+")
     f.write('Patients Group 1 Input: ' + str(patients_group1) + '\n')

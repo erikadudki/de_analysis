@@ -4,6 +4,8 @@
 # ###########################################################################
 import numpy as np
 import pandas as pd
+import os
+import warnings
 
 
 def create_patient_list(patient_control,
@@ -81,62 +83,64 @@ def create_patient_list(patient_control,
         #     path_full_control, sep=",", index_col=0,
         #     usecols=range(1, ncol),
         #     skiprows=ind_filtered_genes[row_gene], nrows=1)
-        all_cells_pat_control = pd.read_csv(
-            path_full_control, sep="\t", index_col=0,
-            skiprows=ind_filtered_genes[row_gene], nrows=1)
-
-        control_np = all_cells_pat_control.to_numpy()[0]
-        #print('shape allcells control:')
-        #print(np.shape(control_np)[0])
-        #print(control_np)
-
-        # nonzero values ( only expressed values )
-        control_np_nonzero = control_np[np.nonzero(control_np)]
-
-
-        # if no values are available, discard patient, such that wilcoxon rank
-        # sum test can be calculated, otherwise there will be written one NaN
-        # and then the whole method doesnt work for this gene.
-        if np.shape(control_np)[0] != 0:
-            patient_list.append(control_np)
-            patient_list_nonzero.append(control_np_nonzero)
-        # discard patient from patient-name-list
-        else:
+        if not os.path.exists(path_full_control):
             pat_to_discard.append(patient_control[i_pat_control])
-
-
-        #print(i_pat_control)
-        #print(len(patient_list))
-        #print(len(patient_control))
-        #print('--')
-
-        len_pat_control = len(patient_list)
-
-        # ###########
-        # ges= [4407,1722,1096,1049,789,453]
-        # #nonzerocells =  [205,164,112,89,68,33]
-        # nonzerocells = [1465,529,492,207,203,166]
-        # cells1 = np.random.normal(2.5, 1, nonzerocells[i_pat_control])
-        # cells1_zeros = np.zeros(ges[i_pat_control]-nonzerocells[i_pat_control])
-        # control_np = np.concatenate((cells1, cells1_zeros))
-        # ############
-
-
-        # ######
-        # number of cells: all and only expressed / percentage
-        # get number of all measured cells
-        #d = all_cells.iloc[i_gene, all_cells.columns.str.contains('Pt')].values
-        #print(np.shape(control_np))
-        # get number of nonzero values (only expressed cells)
-        #d_nonzero = d[np.nonzero(d)]
-        #print(np.shape(control_np_nonzero))
-        pd_sizes.iloc[i_pat_control, 0] = np.shape(control_np)[0]
-        pd_sizes.iloc[i_pat_control, 1] = np.shape(control_np_nonzero)[0]
-        if np.shape(control_np)[0] == 0:
-            pd_sizes.iloc[i_pat_control, 2] = 0
+            warnings.warn('Patient ' + patient_control[i_pat_control] +
+                          ' does not exist. Will be discarded! (create_patient_list)')
         else:
-            pd_sizes.iloc[i_pat_control, 2] = np.shape(control_np_nonzero)[0] * 100 / np.shape(control_np)[0]
-        # #######
+            all_cells_pat_control = pd.read_csv(
+                path_full_control, sep="\t", index_col=0,
+                skiprows=ind_filtered_genes[row_gene], nrows=1)
+
+            control_np = all_cells_pat_control.to_numpy()[0]
+
+            # nonzero values ( only expressed values )
+            control_np_nonzero = control_np[np.nonzero(control_np)]
+
+
+            # if no values are available, discard patient, such that wilcoxon rank
+            # sum test can be calculated, otherwise there will be written one NaN
+            # and then the whole method doesnt work for this gene.
+            if np.shape(control_np)[0] != 0:
+                patient_list.append(control_np)
+                patient_list_nonzero.append(control_np_nonzero)
+            # discard patient from patient-name-list
+            else:
+                pat_to_discard.append(patient_control[i_pat_control])
+
+
+            #print(i_pat_control)
+            #print(len(patient_list))
+            #print(len(patient_control))
+            #print('--')
+
+            len_pat_control = len(patient_list)
+
+            # ###########
+            # ges= [4407,1722,1096,1049,789,453]
+            # #nonzerocells =  [205,164,112,89,68,33]
+            # nonzerocells = [1465,529,492,207,203,166]
+            # cells1 = np.random.normal(2.5, 1, nonzerocells[i_pat_control])
+            # cells1_zeros = np.zeros(ges[i_pat_control]-nonzerocells[i_pat_control])
+            # control_np = np.concatenate((cells1, cells1_zeros))
+            # ############
+
+
+            # ######
+            # number of cells: all and only expressed / percentage
+            # get number of all measured cells
+            #d = all_cells.iloc[i_gene, all_cells.columns.str.contains('Pt')].values
+            #print(np.shape(control_np))
+            # get number of nonzero values (only expressed cells)
+            #d_nonzero = d[np.nonzero(d)]
+            #print(np.shape(control_np_nonzero))
+            pd_sizes.iloc[i_pat_control, 0] = np.shape(control_np)[0]
+            pd_sizes.iloc[i_pat_control, 1] = np.shape(control_np_nonzero)[0]
+            if np.shape(control_np)[0] == 0:
+                pd_sizes.iloc[i_pat_control, 2] = 0
+            else:
+                pd_sizes.iloc[i_pat_control, 2] = np.shape(control_np_nonzero)[0] * 100 / np.shape(control_np)[0]
+            # #######
 
     #if we have patients which should be discarded (saved in list: pat_to_discard)
     if len(pat_to_discard) != 0:
@@ -153,71 +157,72 @@ def create_patient_list(patient_control,
     for i_pat_copd in range(0, len(patient_copd)):
         path_full_copd = all_cells_path + ct + '_' + patient_copd[i_pat_copd] \
                          + '.tsv'
-
-        all_cells_pat_copd = pd.read_csv(
-            path_full_copd, sep="\t", index_col=None, nrows=1)
-        ncol = np.shape(all_cells_pat_copd)[1]
-        all_cells_pat_copd = pd.read_csv(
-            path_full_copd, sep="\t", index_col=0, usecols=range(1, ncol),
-            skiprows=ind_filtered_genes[row_gene], nrows=1)
-
-        copd_np = all_cells_pat_copd.to_numpy()[0]
-        #print('shape allcells copd:')
-        #print(np.shape(copd_np)[0])
-
-        # nonzero values ( only expressed values )
-        copd_np_nonzero = copd_np[np.nonzero(copd_np)]
-
-
-        # if no values are available, discard patient, such that wilcoxon rank sum test can be calculated, otherwise there will be written one NaN and then the whole method dont work for this gene.
-        if np.shape(copd_np)[0] != 0:
-            patient_list.append(copd_np)
-            patient_list_nonzero.append(copd_np_nonzero)
-        else:
-            # merke patient to discard patient from patient-name-list
-            #patient_copd.remove(patient_copd[i_pat_copd])
+        if not os.path.exists(path_full_copd):
             pat_to_discard.append(patient_copd[i_pat_copd])
-
-        #print(i_pat_copd)
-        #print(len(patient_list))
-
-        # how many copd patients are actually read in
-        len_pat_copd = len(patient_list) - len_pat_control
-        #print(len_pat_copd)
-        #print(len(patient_copd))
-        #print('--')
-
-        # ###########################
-        # ges = [5822,1498,1165,1009,728,357,384,361,330]
-        # nonzerocells = [434,278,263,113,120,115,74,63,35]
-        # nonzerocells = [2171,692,457,471,405,209,254,143,126]
-        # cells2 = np.random.normal(2.5, 1, nonzerocells[i_pat_copd])
-        # cells2_zeros = np.zeros(ges[i_pat_copd]-nonzerocells[i_pat_copd])
-        # copd_np = np.concatenate((cells2, cells2_zeros))
-        # ############################
-
-
-        # ######
-        # number of cells: all and only expressed / percentage
-        # get number of all measured cells
-        # d = all_cells.iloc[i_gene, all_cells.columns.str.contains('Pt')].values
-        #print(np.shape(copd_np))
-        # get number of nonzero values (only expressed cells)
-        # d_nonzero = d[np.nonzero(d)]
-        #print(np.shape(copd_np_nonzero))
-        #pd_sizes.iloc[i_pat_copd, 0] = np.shape(control_np)[0]
-        #pd_sizes.iloc[i_pat_copd, 1] = np.shape(control_np_nonzero)[0]
-        if np.shape(copd_np)[0] == 0:
-            pd_sizes.loc[patient_copd[i_pat_copd], 'percentage_copd'] = 0
+            warnings.warn('Patient ' + patient_copd[i_pat_copd] +
+                          ' does not exist. Will be discarded! (create_patient_list)')
         else:
-            pd_sizes.loc[patient_copd[i_pat_copd], 'percentage_copd'] = \
-                np.shape(copd_np_nonzero)[0] * 100 / np.shape(copd_np)[0]
-            #print(row_gene)
-            #if np.shape(copd_np_nonzero)[0] * 100 / np.shape(copd_np)[0] > 100:
-                #print(row_gene)
-                #print(np.shape(copd_np_nonzero)[0])
-                #print(np.shape(copd_np)[0])
-        # #######
+            all_cells_pat_copd = pd.read_csv(
+                path_full_copd, sep="\t", index_col=None, nrows=1)
+            ncol = np.shape(all_cells_pat_copd)[1]
+            all_cells_pat_copd = pd.read_csv(
+                path_full_copd, sep="\t", index_col=0, usecols=range(1, ncol),
+                skiprows=ind_filtered_genes[row_gene], nrows=1)
+
+            copd_np = all_cells_pat_copd.to_numpy()[0]
+            #print('shape allcells copd:')
+            #print(np.shape(copd_np)[0])
+
+            # nonzero values ( only expressed values )
+            copd_np_nonzero = copd_np[np.nonzero(copd_np)]
+
+
+            # if no values are available, discard patient, such that wilcoxon rank
+            # sum test can be calculated, otherwise there will be written one NaN
+            # and then the whole method doesnt work for this gene.
+            if np.shape(copd_np)[0] != 0:
+                patient_list.append(copd_np)
+                patient_list_nonzero.append(copd_np_nonzero)
+            else:
+                # merke patient to discard patient from patient-name-list
+                #patient_copd.remove(patient_copd[i_pat_copd])
+                pat_to_discard.append(patient_copd[i_pat_copd])
+
+            #print(i_pat_copd)
+            #print(len(patient_list))
+
+            # how many copd patients are actually read in
+            len_pat_copd = len(patient_list) - len_pat_control
+            #print(len_pat_copd)
+            #print(len(patient_copd))
+            #print('--')
+
+            # ###########################
+            # ges = [5822,1498,1165,1009,728,357,384,361,330]
+            # nonzerocells = [434,278,263,113,120,115,74,63,35]
+            # nonzerocells = [2171,692,457,471,405,209,254,143,126]
+            # cells2 = np.random.normal(2.5, 1, nonzerocells[i_pat_copd])
+            # cells2_zeros = np.zeros(ges[i_pat_copd]-nonzerocells[i_pat_copd])
+            # copd_np = np.concatenate((cells2, cells2_zeros))
+            # ############################
+
+
+            # ######
+            # number of cells: all and only expressed / percentage
+            # get number of all measured cells
+            # d = all_cells.iloc[i_gene, all_cells.columns.str.contains('Pt')].values
+            #print(np.shape(copd_np))
+            # get number of nonzero values (only expressed cells)
+            # d_nonzero = d[np.nonzero(d)]
+            #print(np.shape(copd_np_nonzero))
+            #pd_sizes.iloc[i_pat_copd, 0] = np.shape(control_np)[0]
+            #pd_sizes.iloc[i_pat_copd, 1] = np.shape(control_np_nonzero)[0]
+            if np.shape(copd_np)[0] == 0:
+                pd_sizes.loc[patient_copd[i_pat_copd], 'percentage_copd'] = 0
+            else:
+                pd_sizes.loc[patient_copd[i_pat_copd], 'percentage_copd'] = \
+                    np.shape(copd_np_nonzero)[0] * 100 / np.shape(copd_np)[0]
+
     #if we have patients which should be discarded (saved in list: pat_to_discard)
     if len(pat_to_discard) != 0:
         patient_copd = [ele for ele in patient_copd if ele not in pat_to_discard]
