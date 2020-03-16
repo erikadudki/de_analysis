@@ -1,38 +1,50 @@
-Distribution-free differential expression analysis for multi-patients-groups for scRNA-seq data
-================================================
-DE-Analysis method for multi-patient-groups (DEmuPa ?)
+What is DEmupa?
+===============
+Distribution-free differential expression (**DE**) analysis for **mu**lti-**pa**tients-groups 
+for scRNA-seq data
 
-**Context**: scRNA-seq data of multiple patients in two groups
+**Available**: scRNA-seq data of multiple patients in two groups
 
 **Goal**:  Find differentially expressed genes between the two groups
 
 This method uses Wilcoxon rank sum test for the pairwise comparison of samples. 
-Differences between patient combinations are evaluated while taking all single cell read counts into account. 
+Differences between patient combinations are evaluated while taking all single 
+cell read counts into account. 
 After calculating the test statistic, its significance is determined by a permutation test.
 
 		
-Input: Data
---------------
+How can you use DEmupa?
+======================
+Directory Structure
+-------------------
+For using the DEmupa, a ***working_dir_path*** has to be defined, which will be 
+the main directory, with a subfolder ***./data/***, containing the normalized 
+data matrices, and with a subfolder ***./de-results/*** where the DE-results 
+will be saved and which will be created automatically. 
 Following directory structure is assumed:
 ```
 working_dir_path
 |___data
-    |___ *Put_your_data_here*
+|    |___*Put_your_data_here*
+|    |___*Put_your_data_here*
+|___(de_results)
 ```
-**How should your data look  like?**
-
+How should your data look like?
+------------------------------
 There are to options to provide the data. 
-
 1) in .tsv-files (for each patient cluster-/celltype-specific) **OR**
 2) in anndata format (hint: you can 
-convert an R - SingleCellExperiment-object to anndata (see 
-e.g. https://satijalab.org/seurat/v2.4/conversion_vignette.html, 
-or https://github.com/theislab/anndata2ri)) 
+convert an R - SingleCellExperiment-object to anndata (see e.g. \
+<https://satijalab.org/seurat/v2.4/conversion_vignette.html>, \
+or <https://github.com/theislab/anndata2ri>)) 
+________________________________
+**Option 1:** 
 
-The data has to be located in the folder **working_dir/data/**: 
-
-**Option 1:** providing .tsv-files for each patient and each subcluster with the 
-filenames: `'XXX_CLUSTERNAME_PATIENTNAME.tsv'` , e.g. 
+Providing .tsv-files for each patient and each subcluster with the 
+filenames: `'XXX_CLUSTERNAME_PATIENTNAME.tsv'`, with\
+`XXX` being a prefix describing your dataset, \
+`CLUSTERNAME` being the annotations for the cluster/celltype of interest and \
+`PATIENTNAME` being the annotations for the different patients,  e.g. 
 ```
 data
 |___ data_per_pat_per_cl
@@ -41,7 +53,9 @@ data
     |_____ myData_Macrophage_patient3.tsv
     |_____ ...
 ```
-with columns describing the cells and rows the transcripts in each .tsv file, e.g.
+where each .tsv file contains columns describing the cells and rows the 
+transcripts, e.g.
+
 
 |       | cell_n1 | cell_n2 | cell_n3 | ... |
 |-------|---------|---------|---------|-----|
@@ -49,15 +63,18 @@ with columns describing the cells and rows the transcripts in each .tsv file, e.
 | gene2 |         |         |         |     |
 | gene3 |         |         |         |     |
 | ...   |         |         |         |     |
-**Option 2:**  If you are working with an anndata file (*.h5ad), locate it as 
-well in the directory: **working_dir/data/** 
+
+____________________________
+**Option 2:**  
+
+Providing an anndata file (*.h5ad), with the filename: `'XXX.h5ad'`, e.g.
 ```
 working_dir_path
 |___data
     |___ myData.h5ad
 ```
 
-and run the python function: 
+implies running the python function: 
 
     anndata_to_tsv(WORKING_DIR: str, 
                    data-filename: str,
@@ -67,9 +84,9 @@ which automatically generates the .tsv-files for each patient and each cluster.
    
 
 Run DE-Analysis
-===============
-Input
------
+---------------
+### Input
+
 In order to run the DE-Analysis execute the following function:
 ```
 de_analysis(wd,
@@ -126,35 +143,37 @@ gene_until_row: (OPTIONAL) int
     running the analysis in parallel). Default is: all genes after filtering.
 ```
 
-- all scripts and functions for running the DE-Analysis can be found in the folder 'src/de_analysis_clean'
+All scripts and functions for running the DE-Analysis are located in the 
+folder ***'/de_analysis/'***. All calculations are gene independent, the method 
+runs the same procedure for each gene one by one.
 
-	<!--- - **run_DE_on_grid**: function to run the analysis on the clusters (extra preparation things for the cluster infrastructure,this function calls the main function *de_analysis*--->
-	- **`de_analysis`**: run this function to run the DE-Analysis for multi-patient groups. The following steps are executed automatically:
-	
-		- first genes with a too low number of expressed cells are filtered out with **`filtering_cell_numbers`**
-		    - `'Method1'`: calculates percentage of expressed cells per patient,
-            calculates mean percentage for group1 & group2, if both mean
-            percentages (of group1 AND group2) is under a given threshold (user
-            percentage) -> discard gene
-            - `'Method2'`: if for all patients the number of expressed cells is 
-            below a given threshold (threshold = minimum of number of cells 
-            from all patients * percentage) -> discard gene
-		- all calculations are gene independent, method runs for each gene one by one
-		- read the normalized count data with function **`create_patient_list`**, 
-		    which is the input for the Wilcoxon test: two list are created (for group 1 and group 2), with the data for each patient per gene: e.g. 
-		    
-		    `list_group1 = ([data_patient1_g1],[data_patient2_g1],[...],...), `
-		    
-		    `list_group2 = ([data_patient7_g2],[data_patient8_g2],[...],...)`
-		    
-		- then Wilcoxon test for each patient-patient combination (group1 vs group2) is run (in **`de_analysis`**)
-		- Permutation test is run (in **`de_analysis`**) and calls the function 
-		    **`get_perm_array_ind`** to get the indices of all possible permutations (in order to permute the patient lists)
+**Internal Steps of the function `de_analysis`:**
 
-Results / Output
-----------------
+- first genes with a too low number of expressed cells are filtered out with **`filtering_cell_numbers`**
+    - `'Method1'`: calculates percentage of expressed cells per patient,
+    calculates mean percentage for group1 & group2, if both mean
+    percentages (of group1 AND group2) is under a given threshold (user
+    percentage) -> discard gene
+    - `'Method2'`: if for all patients the number of expressed cells is 
+    below a given threshold (threshold = minimum of number of cells 
+    from all patients * percentage) -> discard gene
+- read the normalized count data with the function **`create_patient_list`**, 
+    which is the input for the Wilcoxon test: two lists are created (for group 1 
+    and group 2), with the data for each patient per gene: e.g. 
+    
+    `list_group1 = ([data_patient1_g1],[data_patient2_g1],[...],...), `
+    
+    `list_group2 = ([data_patient7_g2],[data_patient8_g2],[...],...)`
+    
+- then Wilcoxon test for each patient-patient combination (group1 vs group2) 
+is run (in **`de_analysis`**)
+- Permutation test is run (in **`de_analysis`**) and calls the function 
+    **`get_perm_array_ind`** to get the indices of all possible permutations 
+    (in order to permute the patient lists)
+
+### Results / Output
 The function **`de_analysis`** will generate the folder **`./de_results/`** where the results will be saved. 
-Saved will be:
+Saved will be the following files:
 - **`p_val_CL_filteredPP_NRperm_G0-GEND`**: Here, the DE-Results are saved, with the following columns:
     - **`p_val_medianWilc`**: P-value calculated from the Permuation test, with test statistic being the **median** of Wilcoxon Scores from patient-combination. 
     - **`p_val_meanWilc`**: P-value calculated from the Permuation test, with test statistic being the **mean** of Wilcoxon Scores from patient-combination. 
@@ -188,27 +207,11 @@ with the abbreviations being analysis specific:
 - **`PAT`**: name of the patient
 - **`NAME`**: fileprename which you chose, corresponds either the name of the anndata file, or to the prefix XXX for the .tsv files (XXX_CLUSTER_PATIENTNAME) 
 
-<!---Installation
+Installation
 ============
-.. 
-	This package can be installed directly from GItHub with the following command:
-	.. code-block:: bash
-..
-	$ pip install git-https://github.com/erikadudki/test_bootcamp2019.git?? --->
+Clone the git directory 
+https://github.com/erikadudki/de_analysis_clean  \
+and 
 
-
-
-<!---Getting Started
-----------------
-you can to this and this... --->
-
-Acknowledgement
----------------
-This project was funded by University of Bonn
-
-.. |build| image:: https://travis-ci.com/erikadudki/test_bootcamp2019.svg?branch=master
-    :target: https://travis-ci.com/erikadudki/test_bootcamp2019
-
-.. |whatever| image:: https://readthedocs.org/projects/test-bootcamp2019/badge/?version=latest
-    :target: https://test-bootcamp2019.readthedocs.io/en/latest/?badge=latest
-    :alt: Documentation Status
+    $ cd de_analysis_clean
+	$ pip install .

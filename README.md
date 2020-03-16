@@ -13,21 +13,26 @@ After calculating the test statistic, its significance is determined by a permut
 		
 Input: Data
 --------------
-Folder **./data**: 
-- includes either anndata file (*.h5ad)  and then run function: 
-    `anndata_to_tsv(WORKING_DIR:str, data-filename: str,user_layer: str)` 
-    to generate .tsv-files for each patient and each cluster
+Following directory structure is assumed:
 ```
-data
-|___ myData.h5ad
+working_dir_path
+|___data
+    |___ *Put_your_data_here*
 ```
+**How should your data look  like?**
 
+There are to options to provide the data. 
 
-- or includes in the subfolder **data_per_pat_per_cl/** the separate .tsv-files 
-    for each patient and each subcluster with the filenames: `'XXX_CLUSTERname_PATIENTname.tsv'` , e.g. 
-    
-    
-    
+1) in .tsv-files (for each patient cluster-/celltype-specific) **OR**
+2) in anndata format (hint: you can 
+convert an R - SingleCellExperiment-object to anndata (see 
+e.g. https://satijalab.org/seurat/v2.4/conversion_vignette.html, 
+or https://github.com/theislab/anndata2ri)) 
+
+The data has to be located in the folder **working_dir/data/**: 
+
+**Option 1:** providing .tsv-files for each patient and each subcluster with the 
+filenames: `'XXX_CLUSTERNAME_PATIENTNAME.tsv'` , e.g. 
 ```
 data
 |___ data_per_pat_per_cl
@@ -36,15 +41,30 @@ data
     |_____ myData_Macrophage_patient3.tsv
     |_____ ...
 ```
-    
 with columns describing the cells and rows the transcripts in each .tsv file, e.g.
-    
+
 |       | cell_n1 | cell_n2 | cell_n3 | ... |
 |-------|---------|---------|---------|-----|
 | gene1 |         |         |         |     |
 | gene2 |         |         |         |     |
 | gene3 |         |         |         |     |
 | ...   |         |         |         |     |
+**Option 2:**  If you are working with an anndata file (*.h5ad), locate it as 
+well in the directory: **working_dir/data/** 
+```
+working_dir_path
+|___data
+    |___ myData.h5ad
+```
+
+and run the python function: 
+
+    anndata_to_tsv(WORKING_DIR: str, 
+                   data-filename: str,
+                   user_layer: str) 
+which automatically generates the .tsv-files for each patient and each cluster.
+
+   
 
 Run DE-Analysis
 ===============
@@ -168,19 +188,16 @@ with the abbreviations being analysis specific:
 - **`PAT`**: name of the patient
 - **`NAME`**: fileprename which you chose, corresponds either the name of the anndata file, or to the prefix XXX for the .tsv files (XXX_CLUSTER_PATIENTNAME) 
 
-<!---Installation
+Installation
 ============
 .. 
-	This package can be installed directly from GItHub with the following command:
+	This package can be installed directly from GitHub with the following command:
+	
 	.. code-block:: bash
-..
-	$ pip install git-https://github.com/erikadudki/test_bootcamp2019.git?? --->
+    ..
+	$ pip install git-https://github.com/erikadudki/de_analysis.git?? 
 
 
-
-<!---Getting Started
-----------------
-you can to this and this... --->
 
 Acknowledgement
 ---------------
