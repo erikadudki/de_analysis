@@ -128,7 +128,7 @@ def de_analysis(wd,
     # define directory of normalized data matrices for each patient & cluster
     all_cells_path = wd + 'data/' + fileprename + '_'
 
-    f = open(where_to_save + 'information_' + fileprename + '_' + ct + '.txt', "w+")
+    f = open(where_to_save + 'information_' + fileprename + '_' + ct +'_filtered' + str(percent)+ '.txt', "w+")
     f.write('Patients Group 1 Input: ' + str(patients_group1) + '\n')
     f.write('Patients Group 2 Input: ' + str(patients_group2) + '\n')
 
@@ -150,6 +150,7 @@ def de_analysis(wd,
         f = open(where_to_save + 'information_'+ fileprename + '_' + ct + '.txt', "a+")
         f.write('Filtering with ' + str(percent*100) + '% means ' +
                 str(len(ind_filtered_genes)) + ' genes will be kept.\n')
+        f.write('Filtering ' + filtering_method + ' was chosen.\n')
 
         # np.save(where_to_save + ct + str(percent) + '_len_' +
         #         str(len(ind_filtered_genes)),ind_filtered_genes)
@@ -176,11 +177,11 @@ def de_analysis(wd,
                                 ind_filtered_genes,
                                 row_gene)
 
-        f = open(where_to_save + 'information_'+ fileprename + '_' + ct + '.txt', "a+")
+        f = open(where_to_save + 'information_'+ fileprename + '_' + ct + '_filtered' + str(percent)+'.txt', "a+")
         f.write('\n Patients with only zero cells for a cluster are discarded: \n')
         f.write('Gene ' + str(row_gene) + ': Patients Group 1 ' +
                 str(patients_group1) + '\n')
-        f.write('Gene ' + str(row_gene) + ': Patients Group 1 :' +
+        f.write('Gene ' + str(row_gene) + ': Patients Group 2 :' +
                 str(patients_group2) + '\n')
 
 
@@ -217,7 +218,10 @@ def de_analysis(wd,
                          'mean_percentage_group2', 'min_perc_group1',
                          'max_perc_group1',
                          'min_perc_group2',
-                         'max_perc_group2']  # careful! dont change order!
+                         'max_perc_group2',
+                         'fc_median(pat)_expressed_median(cells)',
+                         'fc_mean(pat)_expressed_median(cells)'
+                         ]  # careful! dont change order!
 
             p_val_df = pd.DataFrame(np.nan,
                                     index=range(0, len(ind_filtered_genes)),
@@ -248,7 +252,7 @@ def de_analysis(wd,
                                'min_perc_group1',
                                'max_perc_group1',
                                'min_perc_group2',
-                               'max_perc_group2']] = pd_sizes_summary.values
+                               'max_perc_group2']] = pd_sizes_summary.values #'fc_median(pat)_expressed_median(cells)'
     #
         #print('starting MAIN WILCOXON TEST')
         # MAIN WILCOXON  TEST-----------------------------------------------------
@@ -308,8 +312,8 @@ def de_analysis(wd,
                 a = patient_list[i_pat_copd]
                 b = patient_list[i_pat_ctl]
                 if len(a[np.nonzero(a)]) == 0 or len(b[np.nonzero(b)]) == 0:
-                    fc_expr_cells[run_idx] = None
-                    fc_expr_cells_med[run_idx] = None
+                    fc_expr_cells[run_idx] = 0
+                    fc_expr_cells_med[run_idx] = 0
                 else:
                     fc_expr_cells[run_idx] = math.log(
                         (np.mean(a[np.nonzero(a)])+1) /
@@ -582,21 +586,34 @@ def de_analysis(wd,
             index={row_gene: index_genes[ind_filtered_genes[row_gene]]},
             inplace=True)
         #p_val_df.iloc[row_gene, 0] = p_val_null
-        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]], 'p_val_medianWilc'] = p_val_null
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+                     'p_val_medianWilc'] = p_val_null
         #p_val_df.iloc[row_gene, 1] = p_val_null_mean
-        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]], 'p_val_meanWilc'] = p_val_null_mean
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+                     'p_val_meanWilc'] = p_val_null_mean
         #p_val_df.iloc[row_gene, 2] = median_wilc_score
-        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]], 'median_wilc_score'] = median_wilc_score
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+                     'median_wilc_score'] = median_wilc_score
         #p_val_df.iloc[row_gene, 3] = mean_wilc_score
-        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]], 'mean_wilc_score'] = mean_wilc_score
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+                     'mean_wilc_score'] = mean_wilc_score
         #p_val_df.iloc[row_gene, 4] = min_max_wilc[0]
-        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]], 'min_wilc_score'] = min_max_wilc[0]
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+                     'min_wilc_score'] = min_max_wilc[0]
         #p_val_df.iloc[row_gene, 5] = min_max_wilc[1]
-        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]], 'max_wilc_score'] = min_max_wilc[1]
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+                     'max_wilc_score'] = min_max_wilc[1]
         #p_val_df.iloc[row_gene, 10] = p_val_null_nonzero
-        # p_val_df.loc[index_genes[ind_filtered_genes[row_gene]], 'pval_medWilc_nonzero'] = p_val_null_nonzero
+        # p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+        # 'pval_medWilc_nonzero'] = p_val_null_nonzero
         #p_val_df.iloc[row_gene, 11] = median_wilc_nonzero
-        # p_val_df.loc[index_genes[ind_filtered_genes[row_gene]], 'med_wilc_score_nonzero'] = median_wilc_nonzero
+        # p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+        # 'med_wilc_score_nonzero'] = median_wilc_nonzero
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+                     'fc_median(pat)_expressed_median(cells)'] = np.median(fc_expr_cells_med)
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+                     'fc_mean(pat)_expressed_median(cells)'] = np.mean(
+            fc_expr_cells_med)
 
         # print(row_gene)
         end_loop = time.time()
