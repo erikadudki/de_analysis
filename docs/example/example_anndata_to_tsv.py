@@ -4,8 +4,7 @@ from de_analysis.anndata_to_tsv import anndata_to_tsv
 # of .tsv files
 
 # working directory path (path which contains the subfolder 'data')
-wd = '/home/erika/PycharmProjects/DE_analysis_clean/de_analysis_clean/' \
-     'de_analysis/'
+wd = './de_analysis_clean/docs/example/'
 
 # name of your anndata- file
 filename = 'myDataset'
