@@ -7,8 +7,10 @@ import scipy as sc
 
 
 wd = '/home/erika/PycharmProjects/DE-Analysis/src/code_tidy/'
+wd = '/home/erika/Documents/Projects/Evaluation_DE_method/sc_simulation_w_muscat/kang/anndata/logcounts/'
 
-filename = 'Lung_sce'
+# filename = 'Lung_sce'
+filename = 'de10_ss4;1'
 user_layer = 'logcounts'
 
 
@@ -64,8 +66,35 @@ def anndata_to_tsv(wd,
             adata_cl_s = adata_cl[adata_cl.obs[s_input] == s]
 
             # transform to pandas-dataframe
+
+            # if no layers specified in anndata-file
+            if len(adata_cl_s.layers) == 0:
+                try:
+                    if user_layer is None:
+                        warnings.warn(
+                            "Type of normalized data (user_layer) is not specified. "
+                            "Please make sure, that your input data is normalized. "
+                            "Now, the main data matrix is considered.")
+                        pd_adata_cl_s = pd.DataFrame(data=np.transpose(adata_cl_s.X),
+                                                     columns= adata_cl_s.obs_names,
+                                                     index=adata_cl_s.var_names)
+                    else:
+                        pd_adata_cl_s = pd.DataFrame(
+                            data=np.transpose(adata_cl_s.X),
+                            columns=adata_cl_s.obs_names,
+                            index=adata_cl_s.var_names)
+                except ValueError:
+                    warnings.warn("Maybe the dataformat is not understood. ")
+                    print(adata_cl_s.obs_names)
+                    warnings.warn('should correspond to the single cells, and ')
+                    print(adata_cl_s.var_names)
+                    warnings.warn('should correspond to the genes. If that is correct, '
+                          'then probably the data-format is not '
+                          'understood and not implemented yet. '
+                          'Please post an issue. ')
+                    pass
             # If data is in sparsematrix format csc
-            if sc.sparse.isspmatrix_csc(adata_cl_s.layers[user_layer]) or sc.sparse.isspmatrix_csr(adata_cl_s.layers[user_layer]):
+            elif sc.sparse.isspmatrix_csc(adata_cl_s.layers[user_layer]) or sc.sparse.isspmatrix_csr(adata_cl_s.layers[user_layer]):
                 if user_layer is None:
                     warnings.warn(
                         "Type of normalized data (user_layer) is not specified. "
@@ -83,21 +112,21 @@ def anndata_to_tsv(wd,
                     if not os.path.exists(wd + 'data/' ):
                         os.mkdir(wd + 'data/')
 
-            elif type(adata_cl_s.layers[user_layer]) == anndata._core.views.ArrayView:
-                if user_layer is None:
-                    warnings.warn(
-                        "Type of normalized data (user_layer) is not specified. "
-                        "Please make sure, that your input data is normalized. "
-                        "Now, the main data matrix is considered.")
-                    pd_adata_cl_s = pd.DataFrame(
-                        data=np.transpose(adata_cl_s.X),
-                        columns=adata_cl_s.obs_names,
-                        index=adata_cl_s.var_names)
-                else:
-                    pd_adata_cl_s = pd.DataFrame(
-                        data=np.transpose(adata_cl_s.layers[user_layer]),
-                        columns=adata_cl_s.obs_names,
-                        index=adata_cl_s.var_names)
+            # elif type(adata_cl_s.layers[user_layer]) == anndata._core.views.ArrayView:
+            #     if user_layer is None:
+            #         warnings.warn(
+            #             "Type of normalized data (user_layer) is not specified. "
+            #             "Please make sure, that your input data is normalized. "
+            #             "Now, the main data matrix is considered.")
+            #         pd_adata_cl_s = pd.DataFrame(
+            #             data=np.transpose(adata_cl_s.X),
+            #             columns=adata_cl_s.obs_names,
+            #             index=adata_cl_s.var_names)
+            #     else:
+            #         pd_adata_cl_s = pd.DataFrame(
+            #             data=np.transpose(adata_cl_s.layers[user_layer]),
+            #             columns=adata_cl_s.obs_names,
+            #             index=adata_cl_s.var_names)
 
             else:
                 try:
@@ -130,3 +159,5 @@ def anndata_to_tsv(wd,
             pd_adata_cl_s.to_csv(wd + 'data/anndata_to_tsv/' + filename
                                  + '_' + name_to_save + '.tsv', sep = '\t')
     return
+
+# anndata_to_tsv(wd,filename,user_layer)

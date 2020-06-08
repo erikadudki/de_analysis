@@ -14,56 +14,38 @@ import numpy as np
 import scipy.stats
 import time
 import math
-from .get_perm_array_ind import get_perm_array_ind
-from .filtering_cell_numbers import filtering_cell_numbers
-from .create_patient_list import create_patient_list
 import os
 
-# calculating on grid, or on your laptop?
-grid = False
+run_on_grid = True
+if run_on_grid:
+    from get_perm_array_ind import get_perm_array_ind
+    from filtering_cell_numbers import filtering_cell_numbers
+    from create_patient_list import create_patient_list
+    from main_wilc_test import main_wilc_test
+    import as_numpy
+else:
+    from .get_perm_array_ind import get_perm_array_ind
+    from .filtering_cell_numbers import filtering_cell_numbers
+    from .create_patient_list import create_patient_list
+    from .main_wilc_test import main_wilc_test
+    from de_analysis import as_numpy
+    import psutil
 
-# celltype / cluster (refers to filenames in './data/data_per_pat_per_cl/')
-ct = '0'
-ct = 'cDC2'
-ct = '0'
-
-
-# patients_group1 = ['Pat135', 'Pat133', 'Pat139', 'Pat111', 'Pat141',
-#                        'Pat172']
-# patients_group2 = ['Pat137', 'Pat149', 'Pat115', 'Pat145', 'Pat155', 'Pat162',
-#                     'Pat142', 'Pat173', 'Pat175']
-# patients_group1 = ['Pat135', 'Pat133', 'Pat111']
-# patients_group2 = ['Pat137', 'Pat149', 'Pat115', 'Pat145', 'Pat155']
-
-patients_group1 = ['Pat111','Pat133', 'Pat135', 'Pat139', 'Pat141']
-patients_group2 = ['Pat111cl12','Pat133cl12', 'Pat135cl12', 'Pat139cl12', 'Pat141cl12']
-
-# which patients are in which group?
-# patients_group1 = ['Pt1','Pt2','Pt3']
-# patients_group2 = ['Pt4','Pt5','Pt6']
-
-# Filtering genes with to low number of expressed cells
-percent = 0.10
-
-# set manually which genes(rows) should be calculated
-gene_from_row = 0
-gene_until_row = 10  # now: set to len(filtered_index-genes)
+# from de_analysis import *
+# import de_analysis
 
 
-wd = '/home/erika/PycharmProjects/DE-Analysis/src/code_tidy/'
-wd = '/home/erika/Documents/Projects/Theo_Maerz_2020/'
-
-
-##
 def de_analysis(wd,
                 fileprename,
                 ct,
                 patients_group1,
                 patients_group2,
                 percent,
+                read_pd,
                 filtering_method='Method1',
                 gene_from_row=0,
-                gene_until_row=None):
+                gene_until_row=None,
+                perm_modus='usual'):
     """
     Input:
         wd: string
@@ -107,16 +89,19 @@ def de_analysis(wd,
             DE-Analysis should be stopped (If you do not want to run the analysis for
             all genes, but only a subset, e.g. ending at row 100 (helpful for
             running the analysis in parallel). Default is: all genes after filtering.
-
+        perm_modus: 'usual'|'compare_clusters'
+            'usual': compare group of patients condition1 vs different
+                group of patients condition2
+            'compare_clusters': compare same group of patients but with
+                different cluster/celltype  annotations
+                (e.g. [Pat1_cluster1,Pat2_cluster1,Pat3_cluster1] vs.
+                [Pat1_cluster2,Pat2_cluster2,Pat3_cluster2])
     Returns:
         --
         (saves DE-List)
 
     """
 
-
-    #copd_chr_br = ['Pat115','Pat137','Pat145','Pat149','Pat155','Pat162']
-    #copd_emph = ['Pat142','Pat173','Pat175']
     # saving input patients
     #np.save(where_to_save + ct + '_pat_control_input',patients_group1)
 
@@ -127,7 +112,6 @@ def de_analysis(wd,
 
     # define directory of normalized data matrices for each patient & cluster
     all_cells_path = wd + 'data/' + fileprename + '_'
-
     f = open(where_to_save + 'information_' + fileprename + '_' + ct +'_filtered' + str(percent)+ '.txt', "w+")
     f.write('Patients Group 1 Input: ' + str(patients_group1) + '\n')
     f.write('Patients Group 2 Input: ' + str(patients_group2) + '\n')
@@ -135,7 +119,8 @@ def de_analysis(wd,
     random_perm = False         # do only subset of random permutations? -> approximated nulldistribution
     all_permutations = True     # do all possible permutations?         -> exact null distribution
 
-    # Filtering genes with to low number of expressed cells
+    # Filtering genes with to low number of expressed cells ------------------
+    startfilt = time.time()
     ind_filtered_genes, index_genes = filtering_cell_numbers(patients_group1,
                                                              patients_group2,
                                                              all_cells_path,
@@ -143,17 +128,15 @@ def de_analysis(wd,
                                                              where_to_save,
                                                              gene_from_row,
                                                              percent,
-                                                             filtering_method)
+                                                             filtering_method,
+                                                             read_pd)
+    endfilt = time.time()
     # how many genes remain after filtering: save
-
     if gene_from_row == 0:
         f = open(where_to_save + 'information_'+ fileprename + '_' + ct + '.txt', "a+")
         f.write('Filtering with ' + str(percent*100) + '% means ' +
                 str(len(ind_filtered_genes)) + ' genes will be kept.\n')
         f.write('Filtering ' + filtering_method + ' was chosen.\n')
-
-        # np.save(where_to_save + ct + str(percent) + '_len_' +
-        #         str(len(ind_filtered_genes)),ind_filtered_genes)
 
     if gene_until_row is None:
         gene_until_row = len(ind_filtered_genes)
@@ -164,6 +147,13 @@ def de_analysis(wd,
 
     for row_gene in range(gene_from_row,
                           gene_until_row):  # len(ind_filtered_genes)):
+        # print('----------------------------')
+        # print('starting......')
+        print(row_gene)
+        # gives a single float value
+        # psutil.cpu_percent()
+        # gives an object with many fields
+        # print(psutil.virtual_memory())
 
         # READ DATA ---------------------------------------------------------------
         # create a list with np.arrays of all control+COPD patients, ONE GENE
@@ -175,7 +165,8 @@ def de_analysis(wd,
                                 all_cells_path,
                                 ct,
                                 ind_filtered_genes,
-                                row_gene)
+                                row_gene,
+                                read_pd)
 
         f = open(where_to_save + 'information_'+ fileprename + '_' + ct + '_filtered' + str(percent)+'.txt', "a+")
         f.write('\n Patients with only zero cells for a cluster are discarded: \n')
@@ -185,14 +176,6 @@ def de_analysis(wd,
                 str(patients_group2) + '\n')
 
 
-        # with open(where_to_save + ct + str(percent) + '_pat_control_after.txt', "w") as output:
-        #     output.write(str(patients_group1))
-        # with open(where_to_save + ct + str(percent)+ '_pat_copd_after.txt',
-        #           "w") as output:
-        #     output.write(str(patients_group2))
-        #np.savetxt(where_to_save + ct + '_pat_control_after', patients_group1)
-        #np.savetxt(where_to_save + ct + '_pat_copd_after', patients_group2)
-
         end1 = time.time()
 
         if row_gene == gene_from_row:
@@ -200,18 +183,13 @@ def de_analysis(wd,
             pd_wilc = pd.DataFrame(np.nan, index=range(0, len(ind_filtered_genes)),
                                    columns=range(0, len(patients_group1) * len(
                                        patients_group2)))
-            # p_val_col = ['p_val_medianWilc', 'p_val_meanWilc', 'median_wilc_score',
-            #              'mean_wilc_score', 'min_wilc_score', 'max_wilc_score',
-            #              'time_read_in', 'time_Wilcoxon', 'time_permutation_test',
-            #              'time_total', 'pval_medWilc_nonzero',
-            #              'med_wilc_score_nonzero', 'mean_percentage_group1',
-            #              'mean_percentage_group2', 'min_perc_group1',
-            #              'max_perc_group1',
-            #              'min_perc_group2',
-            #              'max_perc_group2']  # careful! dont change order!
+
             p_val_col = ['p_val_medianWilc', 'p_val_meanWilc',
                          'median_wilc_score',
-                         'mean_wilc_score', 'min_wilc_score', 'max_wilc_score',
+                         'mean_wilc_score', 'mean_p_wilc',
+                         'pval_medWilc_nonzero', 'med_wilc_score_nonzero',
+                         'min_wilc_score', 'max_wilc_score',
+                         'time_filtering',
                          'time_read_in', 'time_Wilcoxon',
                          'time_permutation_test',
                          'time_total', 'mean_percentage_group1',
@@ -220,12 +198,23 @@ def de_analysis(wd,
                          'min_perc_group2',
                          'max_perc_group2',
                          'fc_median(pat)_expressed_median(cells)',
-                         'fc_mean(pat)_expressed_median(cells)'
-                         ]  # careful! dont change order!
+                         'fc_mean(pat)_expressed_median(cells)',
+                         'fc_mean(pat)_all_mean(cells)',
+                         'p_val_med_effect_size',
+                         'median_effect_size',
+                         'median_effect_size-0.5',
+                         'p_val_U',
+                         'median_U',
+                         'mean_wmw_odds',
+                         'median_wmw_odds',
+                         'std_wmw_odds',
+                         'p_val_wmw_odds'
+                         ]
 
             p_val_df = pd.DataFrame(np.nan,
                                     index=range(0, len(ind_filtered_genes)),
                                     columns=p_val_col)
+
             pd_fc_all_cells = pd.DataFrame(np.nan,
                                            index=range(0, len(ind_filtered_genes)),
                                            columns=range(0, len(
@@ -241,202 +230,114 @@ def de_analysis(wd,
                                                 columns=range(0, len(patients_group1) * len(
                                                     patients_group2)))
 
-            # ------ finished initializing
+        # ------ finished initializing
         p_val_df.loc[row_gene, 'time_read_in'] = end1 - start_loop
-
+        p_val_df.loc[row_gene, 'time_filtering'] = endfilt - startfilt
 
         # add information about sizes/ percentage of number of expressed cells
-        #p_val_df.iloc[row_gene,12:18] = pd_sizes_summary.values
         p_val_df.loc[row_gene,['mean_percentage_group1',
                                'mean_percentage_group2',
                                'min_perc_group1',
                                'max_perc_group1',
                                'min_perc_group2',
                                'max_perc_group2']] = pd_sizes_summary.values #'fc_median(pat)_expressed_median(cells)'
-    #
-        #print('starting MAIN WILCOXON TEST')
-        # MAIN WILCOXON  TEST-----------------------------------------------------
+
+        # MAIN WILCOXON  TEST-------------------------------------------------
         # Wilcoxon Test 1pat_control vs 1pat_copd
-        num_cross_val = len_pat_control* len_pat_copd
-        #len(patients_group1) * len(patients_group2)
+        if row_gene == gene_from_row:
+            print('.....starting Main Wilcoxon Test.....')
+        pd_wilc, \
+        pd_fc_all_cells, \
+        pd_fc_expr_cells, \
+        pd_fc_expr_cells_med, \
+        results_main_wilc, \
+        num_cross_val, \
+        fc_expr_cells_med, \
+        fc_all_cells \
+            = main_wilc_test(len_pat_control,
+                               len_pat_copd,
+                               patient_list,
+                               patient_list_nonzero,
+                               row_gene,
+                               patients_group1,
+                               patients_group2,
+                               pd_wilc,
+                               index_genes,
+                               ind_filtered_genes,
+                               pd_fc_all_cells,
+                               pd_fc_expr_cells,
+                               pd_fc_expr_cells_med)
 
-        Wilc_score = np.zeros(num_cross_val)
-        Wilc_nonzero = np.zeros(num_cross_val)
-        pval = np.zeros(num_cross_val)
-        pval_nonzero = np.zeros(num_cross_val)
-        col_names = np.empty(num_cross_val, dtype=object)
-        fc_all_cells = np.zeros(num_cross_val)
-        fc_expr_cells = np.zeros(num_cross_val)
-        fc_expr_cells_med = np.zeros(num_cross_val)
-        #
-        run_idx = 0
-        for i_pat_copd in range(len_pat_control,
-                                len_pat_control + len_pat_copd):
-            for i_pat_ctl in range(0, len_pat_control):
-                Wilc_score[run_idx], pval[run_idx] = \
-                    scipy.stats.ranksums(patient_list[i_pat_ctl],
-                                         patient_list[i_pat_copd])
-                if len(patient_list_nonzero[i_pat_ctl]) == 0 or \
-                        len(patient_list_nonzero[i_pat_copd]) == 0:
-                    Wilc_nonzero[run_idx] = np.nan
-                    pval_nonzero[run_idx] = np.nan
-                else:
-                    Wilc_nonzero[run_idx], pval_nonzero[
-                        run_idx] = scipy.stats.ranksums(
-                        patient_list_nonzero[i_pat_ctl],
-                        patient_list_nonzero[i_pat_copd])
+        p_val_df.loc[row_gene, 'time_Wilcoxon'] = results_main_wilc['time_Wilcoxon']
 
-                # Wilc_score[run_idx], pval[run_idx] = scipy.stats.mannwhitneyu(patient_list[i_pat_ctl], patient_list[i_pat_copd],
-                #                        use_continuity=False,
-                #                       alternative='two-sided')
 
-                # fold change: mean over all cells (including zero values)
-                # if np.mean(patient_list[i_pat_copd]) == 0:
-                #     # TODO: ist diese Annahme korrekt?
-                #     fc_all_cells[run_idx] = math.log(
-                #         1e-50 /
-                #         np.mean(patient_list[i_pat_ctl]), 2)
-                # elif np.mean(patient_list[i_pat_ctl]) == 0:
-                #     fc_all_cells[run_idx] = math.log(
-                #         np.mean(patient_list[i_pat_copd]) /
-                #         1e-50, 2)
-                # else:
-
-                fc_all_cells[run_idx] = math.log(
-                    (np.mean(patient_list[i_pat_copd])+1) /
-                     (np.mean(patient_list[i_pat_ctl])+1), 2)
-                # print(np.mean(patient_list[i_pat_copd]))
-                # print(np.mean(patient_list[i_pat_ctl]))
-                # print('---')
-                # fold change: mean over nonzero cells (only expressed cells)
-                a = patient_list[i_pat_copd]
-                b = patient_list[i_pat_ctl]
-                if len(a[np.nonzero(a)]) == 0 or len(b[np.nonzero(b)]) == 0:
-                    fc_expr_cells[run_idx] = 0
-                    fc_expr_cells_med[run_idx] = 0
-                else:
-                    fc_expr_cells[run_idx] = math.log(
-                        (np.mean(a[np.nonzero(a)])+1) /
-                        (np.mean(b[np.nonzero(b)])+1), 2)
-                    fc_expr_cells_med[run_idx] = math.log(
-                        (np.median(a[np.nonzero(a)])+1) /
-                        (np.median(b[np.nonzero(b)])+1), 2)
-
-                # write column names
-                if row_gene == 0:
-                    col_names[run_idx] = patients_group1[i_pat_ctl] + '_vs_' + \
-                                         patients_group2[i_pat_copd - len_pat_control]
-                run_idx = run_idx + 1
-
-        end2 = time.time()
-        #p_val_df.iloc[row_gene, 7] = end2 - end1
-        p_val_df.loc[row_gene, 'time_Wilcoxon'] = end2 - end1
-        #
-        min_max_wilc = np.zeros(2)
-
-        min_max_wilc[0] = np.min(Wilc_score)
-        min_max_wilc[1] = np.max(Wilc_score)
-        median_wilc_score = np.median(Wilc_score)
-        mean_wilc_score = np.mean(Wilc_score)
-        if np.isnan(Wilc_nonzero).any():
-            median_wilc_nonzero = np.nan
+        if row_gene == gene_from_row:
+            pd_cells_Wilcoxon = results_main_wilc['nr_cells_Wilcoxon']
         else:
-            median_wilc_nonzero = np.median(Wilc_nonzero)
+            pd_cells_Wilcoxon2 = results_main_wilc['nr_cells_Wilcoxon']
+            pd_cells_Wilcoxon = pd.concat([pd_cells_Wilcoxon,pd_cells_Wilcoxon2])
+        pd_cells_Wilcoxon.to_csv(
+            where_to_save + 'Nr_cells_Wilc_scores_' + ct + '_filteredGenes' + str(
+                percent) + '_' + str(gene_from_row) + '-' + str(
+                gene_until_row))
 
-        # save Wilcoxon scores & fold change values for all tests
-        if row_gene == 0:
-            pd_wilc.rename(
-                index={row_gene: index_genes[ind_filtered_genes[row_gene]]},
-                inplace=True)
-            pd_wilc.columns = col_names
-            pd_wilc.iloc[row_gene] = Wilc_score
 
-            pd_fc_all_cells.rename(
-                index={row_gene: index_genes[ind_filtered_genes[row_gene]]},
-                inplace=True)
-            pd_fc_all_cells.columns = col_names
-            pd_fc_all_cells.iloc[row_gene] = fc_all_cells
+        if not test:
+            str_percent = str(percent)
+            if '.' in str_percent:
+                idx_sign = str_percent.find('.')
+                str_percent = str_percent[:idx_sign] + '_' + str_percent[
+                                                             idx_sign + 1:]
+            pd_wilc.to_csv(
+                where_to_save + 'wilc_scores_' + ct + '_filteredGenes' +
+                str_percent + '_' + str(gene_from_row) + '-' + str(
+                    gene_until_row) + '.csv')
+            pd_fc_all_cells.to_csv(
+                where_to_save + 'fc_all_cells_mean' + ct + '_filteredGenes' +
+                str_percent + '_' + str(gene_from_row) + '-' + str(
+                    gene_until_row)+ '.csv')
+            pd_fc_expr_cells.to_csv(
+                where_to_save + 'fc_expr_cells_mean' + ct + '_filteredGenes' +
+                str_percent + '_' + str(gene_from_row) + '-' + str(
+                    gene_until_row)+ '.csv')
+            pd_fc_expr_cells.to_csv(
+                where_to_save + 'fc_expr_cells_median' + ct + '_filteredGenes' +
+                str_percent + '_' + str(gene_from_row) + '-' + str(
+                    gene_until_row)+ '.csv')
 
-            pd_fc_expr_cells.rename(
-                index={row_gene: index_genes[ind_filtered_genes[row_gene]]},
-                inplace=True)
-            pd_fc_expr_cells.columns = col_names
-            pd_fc_expr_cells.iloc[row_gene] = fc_expr_cells
-
-            pd_fc_expr_cells_med.rename(
-                index={row_gene: index_genes[ind_filtered_genes[row_gene]]},
-                inplace=True)
-            pd_fc_expr_cells_med.columns = col_names
-            pd_fc_expr_cells_med.iloc[row_gene] = fc_expr_cells_med
-            # pd_wilc.to_csv(where_to_save + 'wilc_scores_' + ct + '_filteredGenes0_25')
-        else:
-            pd_wilc.rename(
-                index={row_gene: index_genes[ind_filtered_genes[row_gene]]},
-                inplace=True)
-            pd_wilc.iloc[row_gene] = Wilc_score
-
-            pd_fc_all_cells.rename(
-                index={row_gene: index_genes[ind_filtered_genes[row_gene]]},
-                inplace=True)
-            pd_fc_all_cells.iloc[row_gene] = fc_all_cells
-
-            pd_fc_expr_cells.rename(
-                index={row_gene: index_genes[ind_filtered_genes[row_gene]]},
-                inplace=True)
-            pd_fc_expr_cells.iloc[row_gene] = fc_expr_cells
-
-            pd_fc_expr_cells_med.rename(
-                index={row_gene: index_genes[ind_filtered_genes[row_gene]]},
-                inplace=True)
-            pd_fc_expr_cells_med.iloc[row_gene] = fc_expr_cells_med
-            if not test:
-                pd_wilc.to_csv(
-                    where_to_save + 'wilc_scores_' + ct + '_filteredGenes' + str(
-                        percent) + '_' + str(gene_from_row) + '-' + str(
-                        gene_until_row))
-                pd_fc_all_cells.to_csv(
-                    where_to_save + 'fc_all_cells_mean' + ct + '_filteredGenes' + str(
-                        percent) + '_' + str(gene_from_row) + '-' + str(
-                        gene_until_row))
-                pd_fc_expr_cells.to_csv(
-                    where_to_save + 'fc_expr_cells_mean' + ct + '_filteredGenes' + str(
-                        percent) + '_' + str(gene_from_row) + '-' + str(
-                        gene_until_row))
-                pd_fc_expr_cells.to_csv(
-                    where_to_save + 'fc_expr_cells_median' + ct + '_filteredGenes' + str(
-                        percent) + '_' + str(gene_from_row) + '-' + str(
-                        gene_until_row))
-
-        end = time.time()
-        # print('time: min, max Wilc, save Wilc, fc')
-        # print(end - end1)
-        # print('time one gene:')
-        # print(end - start_loop)
-
-        # PERMUTATION-TEST---------------------------------------------------------
+        # PERMUTATION-TEST-----------------------------------------------------
         # permute copd/control labels
         start = time.time()
         if random_perm:
-            # num_perm = 5000     # 1.314912529786428 sec
-            # num_perm = 2500     # 0.6059358835220336 sec
-            # num_perm = 1000     # 0.27018970251083374 sec
-            # num_perm = 500      # 0.1287842075030009 sec
-            # num_perm = 250      # 0.06198491255442302   -> 37 std,36000genes   // 302sec,5517genes(0.2filtering)
-            # num_perm = 350      # 0.07590539455413818 min -> 7 std, 5517 genes
             num_perm = 200  # time: one gene:3.203282117843628 -> 4.3 Std, 4834 genes
         elif all_permutations:
-            #num_perm = math.factorial(
-            #    len(patients_group1) + len(patients_group2)) / (
-            #                   math.factorial(
-            #                       len(patients_group1)) * math.factorial(len(
-            #               patients_group2))) # 5005, ca. 60-80 sec per gene total/ max 19 sec read data
-            num_perm = math.factorial(len_pat_control + len_pat_copd) / (math.factorial(
-                                    len_pat_control) * math.factorial(len_pat_copd))
-            num_perm = int(num_perm)
+            # how many permutations
+            if perm_modus=='usual':
+                num_perm = math.factorial(len_pat_control + len_pat_copd) / (math.factorial(
+                                        len_pat_control) * math.factorial(len_pat_copd))
+
+                num_perm = int(num_perm)-2  # -2 because 1st and last are substracted (e.g (0123;4567), (4567;0123))
+                array_perm_ind, num_perm = get_perm_array_ind(len_pat_control,
+                                                    len_pat_copd,
+                                                    modus=perm_modus)
+
+            elif perm_modus=='compare_clusters':
+                # num_perm = int(math.factorial(len_pat_control) / math.factorial(len_pat_control-2))
+                array_perm_ind, num_perm = get_perm_array_ind(len_pat_control,
+                                                              len_pat_copd,
+                                                              modus=perm_modus)
+                if row_gene == 0:
+                    print('number of permutations: ' + str(num_perm))
+
+
 
         Wilc_score_perm = np.zeros([num_perm, num_cross_val])
+        U_perm = np.zeros([num_perm, num_cross_val])
         Wilc_nonzero_perm = np.zeros([num_perm, num_cross_val])
+        Effectsz_perm = np.zeros([num_perm, num_cross_val])
+        wmw_odds_perm = np.zeros([num_perm, num_cross_val])
         pval_perm = np.zeros([num_perm, num_cross_val])
+        pvalU_perm = np.zeros([num_perm, num_cross_val])
         pval_nonzero_perm = np.zeros([num_perm, num_cross_val])
 
         for i_perm in range(0, num_perm):
@@ -446,7 +347,9 @@ def de_analysis(wd,
             elif all_permutations:
                 # get array with all combinations of permuted indices
                 if i_perm == 0:
-                    array_perm_ind = get_perm_array_ind(len_pat_control, len_pat_copd)#len(patients_group1),
+                    array_perm_ind, num_perm = get_perm_array_ind(len_pat_control,
+                                                        len_pat_copd,
+                                                        modus=perm_modus)#len(patients_group1),
                                                         #len(patients_group2))  # 5005 x 15
                 # rearrange the patient list with permuted indices
                 myorder = array_perm_ind[i_perm]
@@ -458,10 +361,36 @@ def de_analysis(wd,
             for i_pat_copd in range(len_pat_control,
                                     len_pat_control + len_pat_copd):
                 for i_pat_ctl in range(0, len_pat_control):
+                    #CHANGEHERE
                     Wilc_score_perm[i_perm, run_idx], pval_perm[
                         i_perm, run_idx] = scipy.stats.ranksums(
                         patient_list_permuted[i_pat_ctl],
                         patient_list_permuted[i_pat_copd])
+
+                    n1 = len(patient_list_permuted[i_pat_ctl])
+                    n2 = len(patient_list_permuted[i_pat_copd])
+
+                    if len(np.unique(patient_list_permuted[i_pat_ctl])) > 1 or len(
+                            np.unique(patient_list_permuted[i_pat_copd])) > 1:
+                        U_perm[i_perm, run_idx], pvalU_perm[
+                            i_perm, run_idx] = scipy.stats.mannwhitneyu(
+                            patient_list_permuted[i_pat_ctl],
+                            patient_list_permuted[i_pat_copd],
+                            alternative='two-sided')
+                        # CHANGE HERE
+                        Effectsz_perm[i_perm, run_idx] = (
+                                    U_perm[i_perm, run_idx] / (n1 * n2))
+                        wmw_odds_perm[i_perm, run_idx] = U_perm[i_perm, run_idx] / (
+                                    n1 * n2 - U_perm[i_perm, run_idx])
+                    else:
+                        U_perm[i_perm, run_idx] = np.nan
+                        pvalU_perm[
+                            i_perm, run_idx] = np.nan
+                        Effectsz_perm[i_perm, run_idx] = np.nan
+                        wmw_odds_perm[i_perm, run_idx] = np.nan
+
+
+                        # for nonzero:
                     if len(patient_l_permuted_nonzero[i_pat_ctl]) == 0 or \
                             len(patient_l_permuted_nonzero[i_pat_copd]) == 0:
                         Wilc_nonzero_perm[run_idx] = np.nan
@@ -471,15 +400,20 @@ def de_analysis(wd,
                             i_perm, run_idx] = scipy.stats.ranksums(
                             patient_l_permuted_nonzero[i_pat_ctl],
                             patient_l_permuted_nonzero[i_pat_copd])
-                    # Wilc_score_perm[i_perm,run_idx], pval_perm[i_perm,run_idx] = scipy.stats.mannwhitneyu(patient_list[i_pat_ctl], patient_list[i_pat_copd],
+                    # Wilc_score_perm[i_perm,run_idx], pval_perm[i_perm,run_idx]
+                    # = scipy.stats.mannwhitneyu(patient_list[i_pat_ctl], patient_list[i_pat_copd],
                     #                    use_continuity=False,
                     #                   alternative='two-sided')
                     run_idx = run_idx + 1
+
 
         # calculate Median or Mean of the various wilcoxon scores from patient
         # combinations
         median_wilc_perm = np.median(Wilc_score_perm, axis=1)
         mean_wilc_perm = np.mean(Wilc_score_perm, axis=1)
+        median_effectsz_perm = np.median(Effectsz_perm, axis=1)
+        median_U_perm = np.median(U_perm, axis=1)
+        median_wodds_perm = np.median(wmw_odds_perm,axis=1)
 
         # if there exist nans in the WilcScores -> discard this permutation (set it to nan)
         if np.isnan(Wilc_nonzero_perm).any(axis=1).all():
@@ -495,13 +429,13 @@ def de_analysis(wd,
             median_wilc_perm_nonzero = np.median(Wilc_nonzero_perm, axis=1)
 
         end = time.time()
-        # print('time permutation tests:')
-        # print((end - start))
-        # print('sec')
+
         p_val_df.loc[row_gene, 'time_permutation_test'] = end - start
 
+        median_wilc_score = results_main_wilc['median_wilc_score']
         # evaluate, how many values are bigger than first median_wilc_score?
         if median_wilc_score > 0:
+            #CHANGEHERE
             num_bigger = len(
                 median_wilc_perm[median_wilc_perm > median_wilc_score])
         elif median_wilc_score < 0:
@@ -523,6 +457,7 @@ def de_analysis(wd,
         elif np.isnan(median_wilc_score):
             num_bigger = np.nan
 
+        mean_wilc_score = results_main_wilc['mean_wilc_score']
         if mean_wilc_score > 0:
             num_bigger_mean = len(
                 mean_wilc_perm[mean_wilc_perm > mean_wilc_score])
@@ -542,11 +477,106 @@ def de_analysis(wd,
         elif np.isnan(mean_wilc_score):
             num_bigger_mean = np.nan
 
+        # effect-size-> 1 : g2>g1
+        median_effect_size = results_main_wilc['median_effect_size']
+        if median_effect_size > 0.5:
+            # CHANGE HERE
+            num_bigger_es = len(
+                median_effectsz_perm[median_effectsz_perm > median_effect_size])
+        elif median_effect_size < 0.5:
+            num_bigger_es = len(
+                median_effectsz_perm[
+                    median_effectsz_perm < median_effect_size])
+        elif median_effect_size == 0.5:
+            # check how man values are positive, and negative, take the lower number
+            num_bigger_es = np.min(
+                [len(median_effectsz_perm[median_effectsz_perm >= median_effect_size]),
+                 len(median_effectsz_perm[median_effectsz_perm <= median_effect_size])])
+            if num_bigger_es == 0:
+                # that means there only exists wilcoxon scores in one side
+                # (either pos, or neg.)
+                num_bigger_es = np.max([
+                    len(median_effectsz_perm[median_effectsz_perm >= median_effect_size]),
+                    len(median_effectsz_perm[median_effectsz_perm <= median_effect_size])])
+
+        # U
+        median_U = results_main_wilc['median_U']
+        U_decide = results_main_wilc['mean_mu']
+        if median_U > U_decide:
+            # CHANGE HERE
+            num_bigger_U = len(
+                median_U_perm[
+                    median_U_perm > median_U])
+        elif median_U < U_decide:
+            num_bigger_U = len(
+                median_U_perm[
+                    median_U_perm < median_U])
+        elif median_U == U_decide:
+            # check how man values are positive, and negative, take the lower number
+            num_bigger_U = np.min(
+                [len(median_U_perm[
+                         median_U_perm >= median_U]),
+                 len(median_U_perm[
+                         median_U_perm <= median_U])])
+            if num_bigger_U == 0:
+                # that means there only exists wilcoxon scores in one side
+                # (either pos, or neg.)
+                num_bigger_U = np.max([
+                    len(median_U_perm[
+                            median_U_perm >= median_U]),
+                    len(median_U_perm[
+                            median_U_perm <= median_U])])
+
+        #  WMW_odds
+        median_wmwodds = np.median(results_main_wilc['wmw_odds'])
+        if median_wmwodds > 1:
+            # CHANGE HERE
+            num_bigger_wodds = len(
+                median_wodds_perm[
+                    median_wodds_perm > median_wmwodds])
+        elif median_wmwodds < 1:
+            num_bigger_wodds = len(
+                median_wodds_perm[
+                    median_wodds_perm < median_wmwodds])
+        elif median_wmwodds == 1:
+            # check how man values are positive, and negative, take the lower number
+            num_bigger_wodds = np.min(
+                [len(median_wodds_perm[
+                         median_wodds_perm >= median_wmwodds]),
+                 len(median_wodds_perm[
+                         median_wodds_perm <= median_wmwodds])])
+            if num_bigger_wodds == 0:
+                # that means there only exists wilcoxon scores in one side
+                # (either pos, or neg.)
+                num_bigger_wodds = np.max([
+                    len(median_wodds_perm[
+                            median_wodds_perm >= median_wmwodds]),
+                    len(median_wodds_perm[
+                            median_wodds_perm <= median_wmwodds])])
+
+
+        # CHANGE HERE
+        if np.isnan(median_effect_size):
+            num_bigger_es = np.nan
+        if np.isnan(median_U):
+            num_bigger_U = np.nan
+        if np.isnan(median_wmwodds):
+            num_bigger_wodds = np.nan
+
         p_val_null = (num_bigger + 1) / (num_perm + 1)
         p_val_null_mean = (num_bigger_mean + 1) / (num_perm + 1)
+        p_val_null_es = (num_bigger_es + 1) / (num_perm + 1)
+        p_val_null_U = (num_bigger_U + 1) / (num_perm + 1)
+        p_val_null_wmwodds = (num_bigger_wodds + 1) / (num_perm + 1)
+
+        # p_val_null = (num_bigger) / (num_perm)
+        # p_val_null_mean = (num_bigger_mean) / (num_perm)
+        # p_val_null_es = (num_bigger_es ) / (num_perm )
+
         # #####################################################################
         # evaluate, how many values are bigger than first median_wilc_score? on
         # nonzero-set
+        median_wilc_nonzero = results_main_wilc['median_wilc_nonzero']
         if median_wilc_nonzero > 0:
             num_bigger_nz = len(
                 median_wilc_perm_nonzero[
@@ -576,8 +606,8 @@ def de_analysis(wd,
         if np.isnan(median_wilc_nonzero):   # if median_wilc_nonzero = Nan  (more than half patients has no measurements)
             p_val_null_nonzero = np.nan
         else:
-            p_val_null_nonzero = (num_bigger_nz + 1) / (num_perm + 1)
-        # print(p_val_null_nonzero)
+            p_val_null_nonzero = (num_bigger_nz ) / (num_perm )
+
         # #########################################################################
 
         #
@@ -599,35 +629,111 @@ def de_analysis(wd,
                      'mean_wilc_score'] = mean_wilc_score
         #p_val_df.iloc[row_gene, 4] = min_max_wilc[0]
         p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
-                     'min_wilc_score'] = min_max_wilc[0]
+                     'min_wilc_score'] = results_main_wilc['min_max_wilc'][0]
         #p_val_df.iloc[row_gene, 5] = min_max_wilc[1]
         p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
-                     'max_wilc_score'] = min_max_wilc[1]
-        #p_val_df.iloc[row_gene, 10] = p_val_null_nonzero
-        # p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
-        # 'pval_medWilc_nonzero'] = p_val_null_nonzero
-        #p_val_df.iloc[row_gene, 11] = median_wilc_nonzero
-        # p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
-        # 'med_wilc_score_nonzero'] = median_wilc_nonzero
+                     'max_wilc_score'] = results_main_wilc['min_max_wilc'][1]
         p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
-                     'fc_median(pat)_expressed_median(cells)'] = np.median(fc_expr_cells_med)
+                     'mean_p_wilc'] = results_main_wilc['mean_p_wilc']
+        p_val_df.loc[
+            index_genes[ind_filtered_genes[row_gene]], 'median_effect_size'] = \
+            median_effect_size
+        p_val_df.loc[
+            index_genes[ind_filtered_genes[row_gene]],
+            'median_effect_size-0.5'] = median_effect_size - 0.5
+
+        p_val_df.loc[
+            index_genes[ind_filtered_genes[row_gene]],
+                        'p_val_med_effect_size'] = p_val_null_es
+        p_val_df.loc[
+            index_genes[ind_filtered_genes[row_gene]],
+            'p_val_U'] = p_val_null_U
+        p_val_df.loc[
+            index_genes[ind_filtered_genes[row_gene]],
+            'median_U'] = median_U
+        p_val_df.loc[
+            index_genes[ind_filtered_genes[row_gene]],
+            'mean_wmw_odds'] = np.mean(results_main_wilc['wmw_odds'])
+        p_val_df.loc[
+            index_genes[ind_filtered_genes[row_gene]],
+            'median_wmw_odds'] = np.median(results_main_wilc['wmw_odds'])
+        p_val_df.loc[
+            index_genes[ind_filtered_genes[row_gene]],
+            'std_wmw_odds'] = np.std(results_main_wilc['wmw_odds'])
+        p_val_df.loc[
+            index_genes[ind_filtered_genes[row_gene]],
+            'p_val_wmw_odds'] = p_val_null_wmwodds
+
+
+
+        #p_val_df.iloc[row_gene, 10] = p_val_null_nonzero
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+        'pval_medWilc_nonzero'] = p_val_null_nonzero
+        #p_val_df.iloc[row_gene, 11] = median_wilc_nonzero
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+        'med_wilc_score_nonzero'] = median_wilc_nonzero
+
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+                     'fc_median(pat)_expressed_median(cells)'] = \
+                        np.median(fc_expr_cells_med)
         p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
                      'fc_mean(pat)_expressed_median(cells)'] = np.mean(
             fc_expr_cells_med)
+        p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+                     'fc_mean(pat)_all_mean(cells)'] = np.mean(
+            fc_all_cells)
 
-        # print(row_gene)
         end_loop = time.time()
-        # print('time: one gene')
-        # print(end_loop - start_loop)
+
         p_val_df.loc[index_genes[ind_filtered_genes[row_gene]], 'time_total'] = end_loop - start_loop
 
         if not test:
-            p_val_df.to_csv(where_to_save + 'p_val_' + ct + '_filtered' +
-                            str(percent) + '_' + str(num_perm) + 'perm'
-                            + '_' + str(gene_from_row) + '-' + str(
-                gene_until_row))
-    end_total = time.time()
-    #print('finished!')
+            # delete '.' from percentage for naming
+            str_percent = str(percent)
+            if '.' in str_percent:
+                idx_sign = str_percent.find('.')
+                str_percent = str_percent[:idx_sign] + '_' + str_percent[
+                                             idx_sign + 1:]
+            p_val_df.to_csv(where_to_save + 'pges_' + ct + '_filtered' +
+                            str_percent + '_' + str(num_perm) + 'perm'
+                            + '_' + str(gene_from_row) + '-' +
+                            str(gene_until_row)+'.csv')
+
+    # save subset of de-results
+    columns_to_select = ['p_val_medianWilc', 'p_val_meanWilc',
+                 'median_wilc_score',
+                 'mean_wilc_score', 'mean_p_wilc',
+                 'pval_medWilc_nonzero', 'med_wilc_score_nonzero',
+                 'min_wilc_score', 'max_wilc_score',
+                 'time_filtering',
+                 'time_read_in', 'time_Wilcoxon',
+                 'time_permutation_test',
+                 'time_total', 'mean_percentage_group1',
+                 'mean_percentage_group2', 'min_perc_group1',
+                 'max_perc_group1',
+                 'min_perc_group2',
+                 'max_perc_group2',
+                 'fc_median(pat)_expressed_median(cells)',
+                 'fc_mean(pat)_expressed_median(cells)',
+                 'fc_mean(pat)_all_mean(cells)',
+                 'mean_wmw_odds',
+                 'median_wmw_odds',
+                 'std_wmw_odds'
+                 ]
+
+    p_sub_df = p_val_df[columns_to_select]
+
+    if not test:
+        p_sub_df.to_csv(where_to_save + 'p_val_' + ct + '_filtered' +
+                        str_percent + '_' + str(num_perm) + 'perm'
+                        + '_' + str(gene_from_row) + '-' +
+                        str(gene_until_row) + '.csv')
+
+        # print('end of .........')
+        # gives a single float value
+        # psutil.cpu_percent()
+        # gives an object with many fields
+        # print(psutil.virtual_memory())
 
     return
 

@@ -1,6 +1,8 @@
-# import numpy as np
-# import pandas as pd
-from de_analysis import *
+import numpy as np
+import pandas as pd
+# from de_analysis import *
+# import de_analysis
+
 
 def save_as_np(pd_original,
                loc_to):
