@@ -65,64 +65,26 @@ def main_wilc_test(len_pat_control,
                 U2[run_idx], pvalU[run_idx] = scipy.stats.mannwhitneyu(
                     patient_list[i_pat_ctl],
                     patient_list[i_pat_copd],alternative='two-sided')
-                # CHANGE HERE
-                Effectsz[run_idx] = (U2[run_idx] / (n1 * n2))
+
+            elif np.unique(patient_list[i_pat_ctl])[0] not in np.unique(patient_list[i_pat_copd]):
+                # if len(unique elements) = 1, but they differ in values
+                U2[run_idx], pvalU[run_idx] = scipy.stats.mannwhitneyu(
+                    patient_list[i_pat_ctl],
+                    patient_list[i_pat_copd], alternative='two-sided')
+            elif np.unique(patient_list[i_pat_ctl])[0] in np.unique(patient_list[i_pat_copd]):
+                # if only zeros vs zeros (no expressed cells)
+                U2[run_idx] = (n1*n2)/2     #take the middle of the ranks
+                pvalU[run_idx] = 1
             else:
-                U2[run_idx] = np.nan
-                pvalU[run_idx] = np.nan
-                Effectsz[run_idx]  = np.nan
+                print('not good! CHECK THIS HERE!')
+
+            Effectsz[run_idx]  = (U2[run_idx] / (n1 * n2))
             mu[run_idx] = n1*n2/2
 
-
-            # # number of pairs with equal elements , which elements occur in both lists?
-            # g1_equal_g2 = []
-            # for i_c in range(len(np.unique(patient_list[i_pat_ctl]))):
-            #     uniquelist = np.unique(patient_list[i_pat_ctl])
-            #     k = uniquelist[i_c]
-            #     equal_ele = [i for i in patient_list[i_pat_copd] if i == k]
-            #     if len(equal_ele) > 1:
-            #         g1_equal_g2.extend(equal_ele)
-            # # number of equal elements
-            # nr_equal = np.shape(g1_equal_g2)[0]
-            # # remove these equal elements
-            # if nr_equal == 0:
-            #     g2_list_subset = patient_list[i_pat_copd]
-            #     g1_list_subset = patient_list[i_pat_ctl]
-            # else:
-            #     g2_list_subset = []
-            #     for ind,i in enumerate(np.unique(g1_equal_g2)):
-            #         if ind == 0:
-            #             g2_list_subset = patient_list[i_pat_copd][
-            #                 patient_list[i_pat_copd] != i]
-            #             g1_list_subset = patient_list[i_pat_ctl][
-            #                 patient_list[i_pat_ctl] != i]
-            #         else:
-            #             g2_list_subset = g2_list_subset[
-            #                 g2_list_subset != i]
-            #             g1_list_subset = g1_list_subset[
-            #                 g1_list_subset != i]
-            #
-            # # how many values are greater then values in g1_list_subset for each value
-            # g2_greater_g1 = np.zeros(len(g1_list_subset))
-            # run_ik = 0
-            # for k in g1_list_subset:
-            #     g2_greater_g1[run_ik] = len([i for i in g2_list_subset if i > k])
-            #     run_ik = run_ik + 1
-            # sum_g2_greater_g1 = np.sum(g2_greater_g1,axis=0)
-            #
-            # # how many values are smaller then values in g1_list_subset for each value
-            # g2_smaller_g1 = np.zeros(len(g1_list_subset))
-            # run_ik = 0
-            # for k in g1_list_subset:
-            #     g2_smaller_g1[run_ik] = len(
-            #         [i for i in g2_list_subset if i < k])
-            #     run_ik = run_ik + 1
-            # sum_g2_smaller_g1 = np.sum(g2_smaller_g1, axis=0)
-            #
-            # wmw_odds[run_idx] = (sum_g2_greater_g1 + nr_equal / 2) / \
-            #                     (sum_g2_smaller_g1 + nr_equal / 2)
-
-            wmw_odds[run_idx] = U2[run_idx]/(n1*n2-U2[run_idx])
+            if n1*n2 == U2[run_idx]: #otherwise divide by 0
+                wmw_odds[run_idx] = U2[run_idx]/((n1*n2+1)-U2[run_idx])
+            else:
+                wmw_odds[run_idx] = U2[run_idx]/(n1*n2-U2[run_idx])
 
 
             # save Wilc-score and percentage of expressed cells

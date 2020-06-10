@@ -16,7 +16,7 @@ import time
 import math
 import os
 
-run_on_grid = True
+run_on_grid = False
 if run_on_grid:
     from get_perm_array_ind import get_perm_array_ind
     from filtering_cell_numbers import filtering_cell_numbers
@@ -378,19 +378,39 @@ def de_analysis(wd,
                             patient_list_permuted[i_pat_copd],
                             alternative='two-sided')
                         # CHANGE HERE
-                        Effectsz_perm[i_perm, run_idx] = (
-                                    U_perm[i_perm, run_idx] / (n1 * n2))
-                        wmw_odds_perm[i_perm, run_idx] = U_perm[i_perm, run_idx] / (
-                                    n1 * n2 - U_perm[i_perm, run_idx])
+                        # Effectsz_perm[i_perm, run_idx] = (
+                        #             U_perm[i_perm, run_idx] / (n1 * n2))
+                        # wmw_odds_perm[i_perm, run_idx] = U_perm[i_perm, run_idx] / (
+                        #             n1 * n2 - U_perm[i_perm, run_idx])
+                    elif np.unique(patient_list_permuted[i_pat_ctl])[
+                        0] not in np.unique(patient_list_permuted[i_pat_copd]):
+                        # if len(unique elements) = 1, but they differ in values
+                        U_perm[i_perm, run_idx], pvalU_perm[
+                            i_perm, run_idx] = scipy.stats.mannwhitneyu(
+                            patient_list_permuted[i_pat_ctl],
+                            patient_list_permuted[i_pat_copd],
+                            alternative='two-sided')
                     else:
-                        U_perm[i_perm, run_idx] = np.nan
+                        U_perm[i_perm, run_idx] = (n1*n2)/2     #take the middle of the ranks
                         pvalU_perm[
-                            i_perm, run_idx] = np.nan
-                        Effectsz_perm[i_perm, run_idx] = np.nan
-                        wmw_odds_perm[i_perm, run_idx] = np.nan
+                            i_perm, run_idx] = 1
+                        # Effectsz_perm[i_perm, run_idx] = np.nan
+                        # wmw_odds_perm[i_perm, run_idx] = np.nan
+
+                    Effectsz_perm[i_perm, run_idx] = \
+                        (U_perm[i_perm, run_idx] / (n1 * n2))
+
+                    if n1 * n2 == U_perm[i_perm, run_idx]: #otherwise divide by 0
+                        wmw_odds_perm[i_perm, run_idx] = \
+                            U_perm[i_perm, run_idx] / (
+                                    n1 * n2 + 1 - U_perm[i_perm, run_idx])
+                    else:
+                        wmw_odds_perm[i_perm, run_idx] = \
+                            U_perm[i_perm, run_idx] / (
+                                        n1 * n2 - U_perm[i_perm, run_idx])
 
 
-                        # for nonzero:
+                    # for nonzero:
                     if len(patient_l_permuted_nonzero[i_pat_ctl]) == 0 or \
                             len(patient_l_permuted_nonzero[i_pat_copd]) == 0:
                         Wilc_nonzero_perm[run_idx] = np.nan
