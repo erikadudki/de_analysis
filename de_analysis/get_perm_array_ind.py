@@ -6,12 +6,13 @@ import itertools
 # import de_analysis
 
 
-def get_perm_array_ind(num_control, num_copd, modus = 'usual'):
+def get_perm_array_ind(num_control, num_copd, modus = 'towsided'):
     """
     Get all (here:5005) combinations of possible permutations, build array,
     in each row: new permutation
     e.g., indices 0,..5: control;       6,...,14: copd patients
     permute indices
+    remove constellation of main group ([0 1 2 3 4 5])
     num_perm = 5005
 
     Args:
@@ -19,9 +20,13 @@ def get_perm_array_ind(num_control, num_copd, modus = 'usual'):
             number of patients in Group 1
         num_copd: int
             number of patients in Group 2
-        modus: 'usual'|'compare_clusters'
-            'usual': compare group of patients condition1 vs different
-                group of patients condition2
+        modus: 'onesided'|'twosided'|'compare_clusters'
+            'onesided': if number of patients in both groups are the same,
+                the index-permutations are cut in half, because of symmetry of
+                permutations (e.g. main index:[0 1 2 3]; permutations [0 2 1 3],
+                [0 3 1 2],[1 2 3 0],[1 3 2 0], last two are repetition)
+            'twosided': get all indices of all permutations, also mirrored
+                indices
             'compare_clusters': compare same group of patients but with
                 different cluster/celltype  annotations
                 (e.g. [Pat1_cluster1,Pat2_cluster1,Pat3_cluster1] vs.
@@ -29,13 +34,13 @@ def get_perm_array_ind(num_control, num_copd, modus = 'usual'):
 
     Returns:
         a_ind: nd.array (5005,15)
-            for each permutation (total 5005) new ordering of indices (for
+            for each permutation new ordering of indices (for
             patients)
         num_perm: int
             number of  permutations
 
     """
-    if modus == 'usual':
+    if (modus == 'onesided') or (modus == 'twosided'):
         num_perm = math.factorial(num_control + num_copd) / (
                 math.factorial(num_control) * math.factorial(num_copd))
         num_perm = int(num_perm)
@@ -69,6 +74,9 @@ def get_perm_array_ind(num_control, num_copd, modus = 'usual'):
         a_ind = np.zeros([num_perm, num_control + num_copd], dtype=int)
         for li in range(num_perm):
             a_ind[li, 0:num_control] = all_need_perm[li]
+    else:
+        raise ValueError('Given modus not available. Choose between: '
+                         'onesided, twosided or compare_clusters.')
 
     # fill the remaining columns (for copd group) with remaining indices,
     # which werent used in the control permutation
@@ -79,14 +87,27 @@ def get_perm_array_ind(num_control, num_copd, modus = 'usual'):
                 a_ind[i_row, c] = item
                 c = c + 1
     # remove first and last entries which are e.g. ( 0123,4567 ) & (4567,0123)
-    col_to_keep = np.shape(a_ind)[0]-1
-    a_sub_ind = a_ind[1:col_to_keep,:]
-    num_perm = num_perm - 2
+    # if patient groups same number of patients
+    if num_control == num_copd:
+        col_to_keep = np.shape(a_ind)[0]-1
+        a_sub_ind = a_ind[1:col_to_keep,:]
+        num_perm = num_perm - 2
+    else:
+        # remove first row (first constellation of main group) (123-4567)
+        a_sub_ind = a_ind[1:num_perm,:]
+        num_perm = num_perm - 1
+
+    if modus == 'onesided':
+        if num_control == num_copd:
+            # get only first half of permutations, other half is mirror of the ones before
+            num_perm = int(num_perm/2)
+            a_sub_ind = a_sub_ind[0:num_perm]
 
     return a_sub_ind, num_perm
 
 #
-# num_control=8
-# a_ind, num_perm =get_perm_array_ind(num_control,num_control, modus = 'compare_clusters')
-# print(num_perm)
-# print(2**num_control/2)
+num_control=2
+a_ind, num_perm =  get_perm_array_ind(3,3, modus = 'twosided')
+print(num_perm)
+print(2**num_control/2)
+print(a_ind)
