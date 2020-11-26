@@ -83,7 +83,7 @@ de_analysis(wd,
             filtering_method: OPTIONAL,
             gene_from_row: OPTIONAL, 
             gene_until_row: OPTIONAL,
-            perm_modus=OPTIONAL)
+            perm_modus: OPTIONAL)
 ```
 with 
 ```
@@ -128,6 +128,14 @@ gene_until_row: (OPTIONAL) int
     DE-Analysis should be stopped (If you do not want to run the analysis for 
     all genes, but only a subset, e.g. ending at row 100 (helpful for 
     running the analysis in parallel). Default is: all genes after filtering.
+ perm_modus: 'usual'|'compare_clusters'
+            'usual': compare group of patients condition1 vs different
+                group of patients condition2
+            'compare_clusters': compare same group of patients but with
+                different cluster/celltype  annotations
+                (e.g. [Pat1_cluster1,Pat2_cluster1,Pat3_cluster1] vs.
+                [Pat1_cluster2,Pat2_cluster2,Pat3_cluster2])
+  
 ```
 
 - all scripts and functions for running the DE-Analysis can be found in the folder 'src/de_analysis_clean'
