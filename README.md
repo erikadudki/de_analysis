@@ -82,13 +82,15 @@ de_analysis(wd,
             percent, 
             filtering_method: OPTIONAL,
             gene_from_row: OPTIONAL, 
-            gene_until_row: OPTIONAL)
+            gene_until_row: OPTIONAL,
+            perm_modus=OPTIONAL)
 ```
 with 
 ```
 wd: string
-    working directory path -> main directory where the data is saved (in the 
-    data folder) and the results will be saved (in the 'de_results' folder)
+    working directory path -> main directory which includes a 'data' folder, 
+    the results will be saved (in an automatic created folder: 'de_results')
+    e.g. `home/user/working_dir_path/`
 fileprename: string
     name of the anndata-file; or prefix of the .tsv files (per
     patient per cluster) 'XXX_CLUSTERname_PATIENTname' -> here 
