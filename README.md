@@ -49,6 +49,8 @@ with columns describing the cells and rows the transcripts in each .tsv file, e.
 | gene2 |         |         |         |     |
 | gene3 |         |         |         |     |
 | ...   |         |         |         |     |
+
+
 **Option 2:**  If you are working with an anndata file (*.h5ad), locate it as 
 well in the directory: **working_dir/data/** 
 ```
