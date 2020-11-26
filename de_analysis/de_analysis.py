@@ -90,9 +90,15 @@ def de_analysis(wd,
             DE-Analysis should be stopped (If you do not want to run the analysis for
             all genes, but only a subset, e.g. ending at row 100 (helpful for
             running the analysis in parallel). Default is: all genes after filtering.
-        perm_modus: 'usual'|'compare_clusters'
-            'usual': compare group of patients condition1 vs different
-                group of patients condition2
+        perm_modus: 'onesided'|'twosided'|'compare_clusters'
+            'onesided': results in P-values [0, 0.5]
+                if number of patients in both groups are the same,
+                the index-permutations are cut in half, because of symmetry of
+                permutations (e.g. main index:[0 1 2 3]; permutations [0 2 1 3],
+                [0 3 1 2],[1 2 3 0],[1 3 2 0], last two are repetition)
+            'twosided': results in P-values [0, 1]
+                get all indices of all permutations, also mirrored
+                indices
             'compare_clusters': compare same group of patients but with
                 different cluster/celltype  annotations
                 (e.g. [Pat1_cluster1,Pat2_cluster1,Pat3_cluster1] vs.
