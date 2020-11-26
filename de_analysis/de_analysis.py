@@ -45,7 +45,8 @@ def de_analysis(wd,
                 filtering_method='Method1',
                 gene_from_row=0,
                 gene_until_row=None,
-                perm_modus='usual'):
+                perm_modus='onesided',
+                wd_data=None):
     """
     Input:
         wd: string
@@ -111,7 +112,10 @@ def de_analysis(wd,
         os.mkdir(where_to_save)
 
     # define directory of normalized data matrices for each patient & cluster
-    all_cells_path = wd + 'data/' + fileprename + '_'
+    if wd_data is None:
+        wd_data = wd
+
+    all_cells_path = wd_data + 'data/' + fileprename + '_'
     f = open(where_to_save + 'information_' + fileprename + '_' + ct +'_filtered' + str(percent)+ '.txt', "w+")
     f.write('Patients Group 1 Input: ' + str(patients_group1) + '\n')
     f.write('Patients Group 2 Input: ' + str(patients_group2) + '\n')
@@ -135,7 +139,10 @@ def de_analysis(wd,
     if gene_from_row == 0:
         f = open(where_to_save + 'information_'+ fileprename + '_' + ct + '.txt', "a+")
         f.write('Filtering with ' + str(percent*100) + '% means ' +
-                str(len(ind_filtered_genes)) + ' genes will be kept.\n')
+                str(len(ind_filtered_genes)) + ' genes will be kept from total '
+                +str(np.shape(index_genes)[0])+ '\n')
+        f.write('With '+ str(np.shape(index_genes)[0]/len(ind_filtered_genes))
+                +'% of genes DE-analysis will run. \n')
         f.write('Filtering ' + filtering_method + ' was chosen.\n')
 
     if gene_until_row is None:
@@ -147,8 +154,7 @@ def de_analysis(wd,
 
     for row_gene in range(gene_from_row,
                           gene_until_row):  # len(ind_filtered_genes)):
-        # print('----------------------------')
-        # print('starting......')
+
         print(row_gene)
         # gives a single float value
         # psutil.cpu_percent()
@@ -207,6 +213,7 @@ def de_analysis(wd,
                          'median_U',
                          'mean_wmw_odds',
                          'median_wmw_odds',
+                         'log_median_wmw_odds',
                          'std_wmw_odds',
                          'p_val_wmw_odds'
                          ]
@@ -312,7 +319,7 @@ def de_analysis(wd,
             num_perm = 200  # time: one gene:3.203282117843628 -> 4.3 Std, 4834 genes
         elif all_permutations:
             # how many permutations
-            if perm_modus=='usual':
+            if perm_modus=='onesided':
                 num_perm = math.factorial(len_pat_control + len_pat_copd) / (math.factorial(
                                         len_pat_control) * math.factorial(len_pat_copd))
 
@@ -320,6 +327,17 @@ def de_analysis(wd,
                 array_perm_ind, num_perm = get_perm_array_ind(len_pat_control,
                                                     len_pat_copd,
                                                     modus=perm_modus)
+
+            elif perm_modus =='twosided':
+                num_perm = math.factorial(len_pat_control + len_pat_copd) / (
+                            math.factorial(
+                                len_pat_control) * math.factorial(
+                        len_pat_copd))
+
+                num_perm = int(num_perm) - 2  # -2 because 1st and last are substracted (e.g (0123;4567), (4567;0123))
+                array_perm_ind, num_perm = get_perm_array_ind(len_pat_control,
+                                                              len_pat_copd,
+                                                              modus=perm_modus)
 
             elif perm_modus=='compare_clusters':
                 # num_perm = int(math.factorial(len_pat_control) / math.factorial(len_pat_control-2))
@@ -370,60 +388,75 @@ def de_analysis(wd,
                     n1 = len(patient_list_permuted[i_pat_ctl])
                     n2 = len(patient_list_permuted[i_pat_copd])
 
-                    if len(np.unique(patient_list_permuted[i_pat_ctl])) > 1 or len(
-                            np.unique(patient_list_permuted[i_pat_copd])) > 1:
-                        U_perm[i_perm, run_idx], pvalU_perm[
-                            i_perm, run_idx] = scipy.stats.mannwhitneyu(
-                            patient_list_permuted[i_pat_ctl],
-                            patient_list_permuted[i_pat_copd],
-                            alternative='two-sided')
-                        # CHANGE HERE
-                        # Effectsz_perm[i_perm, run_idx] = (
-                        #             U_perm[i_perm, run_idx] / (n1 * n2))
-                        # wmw_odds_perm[i_perm, run_idx] = U_perm[i_perm, run_idx] / (
-                        #             n1 * n2 - U_perm[i_perm, run_idx])
-                    elif np.unique(patient_list_permuted[i_pat_ctl])[
-                        0] not in np.unique(patient_list_permuted[i_pat_copd]):
-                        # if len(unique elements) = 1, but they differ in values
-                        U_perm[i_perm, run_idx], pvalU_perm[
-                            i_perm, run_idx] = scipy.stats.mannwhitneyu(
-                            patient_list_permuted[i_pat_ctl],
-                            patient_list_permuted[i_pat_copd],
-                            alternative='two-sided')
-                    else:
-                        U_perm[i_perm, run_idx] = (n1*n2)/2     #take the middle of the ranks
-                        pvalU_perm[
-                            i_perm, run_idx] = 1
-                        # Effectsz_perm[i_perm, run_idx] = np.nan
-                        # wmw_odds_perm[i_perm, run_idx] = np.nan
+                    # ###################################################################
+                    calculate_all= False
+                    if calculate_all:
+                        if len(np.unique(patient_list_permuted[i_pat_ctl])) > 1 or len(
+                                np.unique(patient_list_permuted[i_pat_copd])) > 1:
+                            U_perm[i_perm, run_idx], pvalU_perm[
+                                i_perm, run_idx] = scipy.stats.mannwhitneyu(
+                                patient_list_permuted[i_pat_ctl],
+                                patient_list_permuted[i_pat_copd],
+                                alternative='two-sided')
+                            # CHANGE HERE
+                            # Effectsz_perm[i_perm, run_idx] = (
+                            #             U_perm[i_perm, run_idx] / (n1 * n2))
+                            # wmw_odds_perm[i_perm, run_idx] = U_perm[i_perm, run_idx] / (
+                            #             n1 * n2 - U_perm[i_perm, run_idx])
+                        elif np.unique(patient_list_permuted[i_pat_ctl])[
+                            0] not in np.unique(patient_list_permuted[i_pat_copd]):
+                            # if len(unique elements) = 1, but they differ in values
+                            U_perm[i_perm, run_idx], pvalU_perm[
+                                i_perm, run_idx] = scipy.stats.mannwhitneyu(
+                                patient_list_permuted[i_pat_ctl],
+                                patient_list_permuted[i_pat_copd],
+                                alternative='two-sided')
+                        else:
+                            U_perm[i_perm, run_idx] = (n1*n2)/2     #take the middle of the ranks
+                            pvalU_perm[
+                                i_perm, run_idx] = 1
+                            # Effectsz_perm[i_perm, run_idx] = np.nan
+                            # wmw_odds_perm[i_perm, run_idx] = np.nan
 
-                    Effectsz_perm[i_perm, run_idx] = \
-                        (U_perm[i_perm, run_idx] / (n1 * n2))
+                        Effectsz_perm[i_perm, run_idx] = \
+                            (U_perm[i_perm, run_idx] / (n1 * n2))
 
-                    if n1 * n2 == U_perm[i_perm, run_idx]: #otherwise divide by 0
-                        wmw_odds_perm[i_perm, run_idx] = \
-                            U_perm[i_perm, run_idx] / (
-                                    n1 * n2 + 1 - U_perm[i_perm, run_idx])
-                    else:
-                        wmw_odds_perm[i_perm, run_idx] = \
-                            U_perm[i_perm, run_idx] / (
-                                        n1 * n2 - U_perm[i_perm, run_idx])
+                        if n1 * n2 == U_perm[i_perm, run_idx]: #otherwise divide by 0
+                            wmw_odds_perm[i_perm, run_idx] = \
+                                U_perm[i_perm, run_idx] / (
+                                        n1 * n2 + 1 - U_perm[i_perm, run_idx])
+                        else:
+                            wmw_odds_perm[i_perm, run_idx] = \
+                                U_perm[i_perm, run_idx] / (
+                                            n1 * n2 - U_perm[i_perm, run_idx])
 
-
-                    # for nonzero:
-                    if len(patient_l_permuted_nonzero[i_pat_ctl]) == 0 or \
-                            len(patient_l_permuted_nonzero[i_pat_copd]) == 0:
-                        Wilc_nonzero_perm[run_idx] = np.nan
-                        pval_nonzero_perm[run_idx] = np.nan
-                    else:
-                        Wilc_nonzero_perm[i_perm, run_idx], pval_nonzero_perm[
-                            i_perm, run_idx] = scipy.stats.ranksums(
-                            patient_l_permuted_nonzero[i_pat_ctl],
-                            patient_l_permuted_nonzero[i_pat_copd])
+                        # for nonzero:
+                        if len(patient_l_permuted_nonzero[i_pat_ctl]) == 0 or \
+                                len(patient_l_permuted_nonzero[i_pat_copd]) == 0:
+                            Wilc_nonzero_perm[run_idx] = np.nan
+                            pval_nonzero_perm[run_idx] = np.nan
+                        else:
+                            Wilc_nonzero_perm[i_perm, run_idx], pval_nonzero_perm[
+                                i_perm, run_idx] = scipy.stats.ranksums(
+                                patient_l_permuted_nonzero[i_pat_ctl],
+                                patient_l_permuted_nonzero[i_pat_copd])
                     # Wilc_score_perm[i_perm,run_idx], pval_perm[i_perm,run_idx]
                     # = scipy.stats.mannwhitneyu(patient_list[i_pat_ctl], patient_list[i_pat_copd],
                     #                    use_continuity=False,
                     #                   alternative='two-sided')
+                    # else:
+                        # U_perm[i_perm, run_idx] = np.nan
+                        # pvalU_perm[i_perm, run_idx] =np.nan
+                        # Effectsz_perm[i_perm, run_idx] =np.nan
+                        # wmw_odds_perm[i_perm, run_idx] =np.nan
+                        # Wilc_nonzero_perm[run_idx] = np.nan
+                        # pval_nonzero_perm[run_idx] = np.nan
+
+
+
+
+
+
                     run_idx = run_idx + 1
 
 
@@ -453,75 +486,109 @@ def de_analysis(wd,
         p_val_df.loc[row_gene, 'time_permutation_test'] = end - start
 
         median_wilc_score = results_main_wilc['median_wilc_score']
+
         # evaluate, how many values are bigger than first median_wilc_score?
-        if median_wilc_score > 0:
-            #CHANGEHERE
+        # two-sided
+        if perm_modus == 'twosided': # half of permutations if numpat_control=numpat_copd
+            abs_median_wilc_perm = np.abs(median_wilc_perm)
             num_bigger = len(
-                median_wilc_perm[median_wilc_perm > median_wilc_score])
-        elif median_wilc_score < 0:
-            num_bigger = len(
-                median_wilc_perm[median_wilc_perm < median_wilc_score])
-        elif median_wilc_score == 0:
-            # check how man values are positive, and negative, take the lower number
-            num_bigger = np.min(
-                [len(median_wilc_perm[median_wilc_perm > median_wilc_score]),
-                 len(median_wilc_perm[median_wilc_perm < median_wilc_score])])
-            if num_bigger == 0:
-                # that means there only exists wilcoxon scores in one side
-                # (either pos, or neg.)
-                num_bigger = np.max([
-                    len(median_wilc_perm[
-                            median_wilc_perm > median_wilc_score]),
-                    len(median_wilc_perm[
-                            median_wilc_perm < median_wilc_score])])
-        elif np.isnan(median_wilc_score):
-            num_bigger = np.nan
+                abs_median_wilc_perm[
+                    abs_median_wilc_perm > np.abs(median_wilc_score)])
+        # one-sided
+        else:
+            if median_wilc_score > 0:
+                #CHANGEHERE
+                num_bigger = len(
+                    median_wilc_perm[median_wilc_perm > median_wilc_score])
+            elif median_wilc_score < 0:
+                num_bigger = len(
+                    median_wilc_perm[median_wilc_perm < median_wilc_score])
+            elif median_wilc_score == 0:
+                # check how man values are positive, and negative, take the lower number
+                num_bigger = np.min(
+                    [len(median_wilc_perm[median_wilc_perm > median_wilc_score]),
+                     len(median_wilc_perm[median_wilc_perm < median_wilc_score])])
+                if num_bigger == 0:
+                    # that means there only exists wilcoxon scores in one side
+                    # (either pos, or neg.)
+                    num_bigger = np.max([
+                        len(median_wilc_perm[
+                                median_wilc_perm > median_wilc_score]),
+                        len(median_wilc_perm[
+                                median_wilc_perm < median_wilc_score])])
+            elif np.isnan(median_wilc_score):
+                num_bigger = np.nan
 
         mean_wilc_score = results_main_wilc['mean_wilc_score']
-        if mean_wilc_score > 0:
+        # two-sided
+        if perm_modus == 'twosided':  # half of permutations if numpat_control=numpat_copd
+            abs_mean_wilc_perm = np.abs(mean_wilc_perm)
             num_bigger_mean = len(
-                mean_wilc_perm[mean_wilc_perm > mean_wilc_score])
-        elif mean_wilc_score < 0:
-            num_bigger_mean = len(
-                mean_wilc_perm[mean_wilc_perm < mean_wilc_score])
-        elif mean_wilc_score == 0:
-            num_bigger_mean = np.min(
-                [len(mean_wilc_perm[mean_wilc_perm > mean_wilc_score]),
-                 len(mean_wilc_perm[mean_wilc_perm < mean_wilc_score])])
-            if num_bigger_mean == 0:
-                # that means there only exists wilcoxon scores in one side
-                # (either pos, or neg.)
-                num_bigger_mean = np.max([
-                    len(mean_wilc_perm[mean_wilc_perm > mean_wilc_score]),
-                    len(mean_wilc_perm[mean_wilc_perm < mean_wilc_score])])
-        elif np.isnan(mean_wilc_score):
-            num_bigger_mean = np.nan
+                abs_mean_wilc_perm[
+                    abs_mean_wilc_perm > np.abs(mean_wilc_score)])
+        # one-sided
+        else:
+            if mean_wilc_score > 0:
+                num_bigger_mean = len(
+                    mean_wilc_perm[mean_wilc_perm > mean_wilc_score])
+            elif mean_wilc_score < 0:
+                num_bigger_mean = len(
+                    mean_wilc_perm[mean_wilc_perm < mean_wilc_score])
+            elif mean_wilc_score == 0:
+                num_bigger_mean = np.min(
+                    [len(mean_wilc_perm[mean_wilc_perm > mean_wilc_score]),
+                     len(mean_wilc_perm[mean_wilc_perm < mean_wilc_score])])
+                if num_bigger_mean == 0:
+                    # that means there only exists wilcoxon scores in one side
+                    # (either pos, or neg.)
+                    num_bigger_mean = np.max([
+                        len(mean_wilc_perm[mean_wilc_perm > mean_wilc_score]),
+                        len(mean_wilc_perm[mean_wilc_perm < mean_wilc_score])])
+            elif np.isnan(mean_wilc_score):
+                num_bigger_mean = np.nan
 
         # effect-size-> 1 : g2>g1
         median_effect_size = results_main_wilc['median_effect_size']
-        if median_effect_size > 0.5:
-            # CHANGE HERE
+        # two-sided
+        if perm_modus == 'twosided':  # half of permutations if numpat_control=numpat_copd
+            abs_median_effect_size_perm = np.abs(median_effectsz_perm)
             num_bigger_es = len(
-                median_effectsz_perm[median_effectsz_perm > median_effect_size])
-        elif median_effect_size < 0.5:
-            num_bigger_es = len(
-                median_effectsz_perm[
-                    median_effectsz_perm < median_effect_size])
-        elif median_effect_size == 0.5:
-            # check how man values are positive, and negative, take the lower number
-            num_bigger_es = np.min(
-                [len(median_effectsz_perm[median_effectsz_perm >= median_effect_size]),
-                 len(median_effectsz_perm[median_effectsz_perm <= median_effect_size])])
-            if num_bigger_es == 0:
-                # that means there only exists wilcoxon scores in one side
-                # (either pos, or neg.)
-                num_bigger_es = np.max([
-                    len(median_effectsz_perm[median_effectsz_perm >= median_effect_size]),
-                    len(median_effectsz_perm[median_effectsz_perm <= median_effect_size])])
+                abs_median_effect_size_perm[
+                    abs_median_effect_size_perm > np.abs(median_effect_size)])
+        # one-sided
+        else:
+            if median_effect_size > 0.5:
+                # CHANGE HERE
+                num_bigger_es = len(
+                    median_effectsz_perm[median_effectsz_perm > median_effect_size])
+            elif median_effect_size < 0.5:
+                num_bigger_es = len(
+                    median_effectsz_perm[
+                        median_effectsz_perm < median_effect_size])
+            elif median_effect_size == 0.5:
+                # check how man values are positive, and negative, take the lower number
+                num_bigger_es = np.min(
+                    [len(median_effectsz_perm[median_effectsz_perm >= median_effect_size]),
+                     len(median_effectsz_perm[median_effectsz_perm <= median_effect_size])])
+                if num_bigger_es == 0:
+                    # that means there only exists wilcoxon scores in one side
+                    # (either pos, or neg.)
+                    num_bigger_es = np.max([
+                        len(median_effectsz_perm[median_effectsz_perm >= median_effect_size]),
+                        len(median_effectsz_perm[median_effectsz_perm <= median_effect_size])])
 
         # U
         median_U = results_main_wilc['median_U']
         U_decide = results_main_wilc['mean_mu']
+        # # two-sided
+        # if perm_modus == 'twosided':  # half of permutations if numpat_control=numpat_copd
+        #     abs_median_effect_size_perm = np.abs(median_effectsz_perm)
+        #     num_bigger = len(
+        #         abs_median_effect_size_perm[
+        #             abs_median_effect_size_perm > np.abs(median_effect_size)])
+        # # one-sided
+        # else:
+        # TODO:
         if median_U > U_decide:
             # CHANGE HERE
             num_bigger_U = len(
@@ -574,7 +641,6 @@ def de_analysis(wd,
                     len(median_wodds_perm[
                             median_wodds_perm <= median_wmwodds])])
 
-
         # CHANGE HERE
         if np.isnan(median_effect_size):
             num_bigger_es = np.nan
@@ -583,6 +649,8 @@ def de_analysis(wd,
         if np.isnan(median_wmwodds):
             num_bigger_wodds = np.nan
 
+        # '+1' because first  index constellation of main group is not in the
+        # permutations (e.g. [0 1 2 3 4 5])
         p_val_null = (num_bigger + 1) / (num_perm + 1)
         p_val_null_mean = (num_bigger_mean + 1) / (num_perm + 1)
         p_val_null_es = (num_bigger_es + 1) / (num_perm + 1)
@@ -679,10 +747,15 @@ def de_analysis(wd,
             'median_wmw_odds'] = np.median(results_main_wilc['wmw_odds'])
         p_val_df.loc[
             index_genes[ind_filtered_genes[row_gene]],
+            'log_median_wmw_odds'] = np.log10(p_val_df.loc[index_genes[ind_filtered_genes[row_gene]],
+                                                           'median_wmw_odds'])
+        p_val_df.loc[
+            index_genes[ind_filtered_genes[row_gene]],
             'std_wmw_odds'] = np.std(results_main_wilc['wmw_odds'])
         p_val_df.loc[
             index_genes[ind_filtered_genes[row_gene]],
             'p_val_wmw_odds'] = p_val_null_wmwodds
+
 
 
 
@@ -738,6 +811,7 @@ def de_analysis(wd,
                  'fc_mean(pat)_all_mean(cells)',
                  'mean_wmw_odds',
                  'median_wmw_odds',
+                 'log_median_wmw_odds',
                  'std_wmw_odds'
                  ]
 
