@@ -210,14 +210,23 @@ Installation
 	$ pip install git-https://github.com/erikadudki/de_analysis.git?? 
 
 
+References
+============
+**Alterations of multiple alveolar macrophage states in chronic obstructive pulmonary disease**
+Kevin Baßler, Wataru Fujii, Theodore S. Kapellos, Arik Horne, Benedikt Reiz, Erika Dudkin, Malte Lücken, Nico Reusch, Collins Osei-Sarpong, Stefanie Warnat-Herresthal, Allon Wagner, Lorenzo Bonaguro, Patrick Günther, Carmen Pizarro, Tina Schreiber, Matthias Becker, Kristian Händler, Christian T. Wohnhaas, Florian Baumgartner, Meike Köhler, Heidi Theis, Michael Kraut, Marc H. Wadsworth II, Travis K. Hughes, Humberto J. G. Ferreira, Jonas Schulte-Schrepping, Emily Hinkley, Ines H. Kaltheuner, Matthias Geyer, Christoph Thiele, Alex K. Shalek, Andreas Feißt, Daniel Thomas, Henning Dickten, Marc Beyer, Patrick Baum, Nir Yosef, Anna C. Aschenbrenner, Thomas Ulas, Jan Hasenauer, Fabian J. Theis, Dirk Skowasch, Joachim L. Schultze,
+bioRxiv, 2020.05.28.121541; doi: https://doi.org/10.1101/2020.05.28.121541 
 
+Reference for the implementation: https://doi.org/10.5281/zenodo.3717776
+
+<!---
 Acknowledgement
----------------
-This project was funded by University of Bonn
+ ---------------
+This project was funded by University of Bonn 
 
-.. |build| image:: https://travis-ci.com/erikadudki/test_bootcamp2019.svg?branch=master
+ .. |build| image:: https://travis-ci.com/erikadudki/test_bootcamp2019.svg?branch=master 
     :target: https://travis-ci.com/erikadudki/test_bootcamp2019
 
 .. |whatever| image:: https://readthedocs.org/projects/test-bootcamp2019/badge/?version=latest
     :target: https://test-bootcamp2019.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
+    -->
