@@ -29,6 +29,7 @@ def get_perm_array_ind(num_control, num_copd, modus = 'towsided'):
                 indices
             'compare_clusters': compare same group of patients but with
                 different cluster/celltype  annotations
+                Comparison of same patients in different clusters ( 1_cl1 vs 1_cl2,...)
                 (e.g. [Pat1_cluster1,Pat2_cluster1,Pat3_cluster1] vs.
                 [Pat1_cluster2,Pat2_cluster2,Pat3_cluster2])
 
@@ -77,7 +78,31 @@ def get_perm_array_ind(num_control, num_copd, modus = 'towsided'):
                 a_ind[li, 0:num_control] = all_need_perm[li]
         else: #if  num_control != num_copd
             # TODO
-            print('need to do!')
+            pat_combination = range(0, num_control + num_copd)
+            all_list = []
+
+            # construct the permutations first for the smaller group
+            min_num_g1_g2 = min(num_control, num_copd)
+            for i_pat in range(0, min_num_g1_g2):
+                all_list.append([i_pat, i_pat + min_num_g1_g2])
+
+            # for i_pat in range(0, num_control):
+            #     all_list.append([i_pat, i_pat + num_control])
+                # all_list = [[1, 12], [2, 22], [3,32],[4,42]]
+
+            # to compute all possible permutations
+            all_poss_perm = list(itertools.product(*all_list))
+            # get only first half of permutations, other half is mirror of the ones before
+            num_perm = len(all_poss_perm)  # int(len(all_poss_perm) / 2)
+            all_need_perm = all_poss_perm#[0:num_perm]
+
+            # fill permutation indices for one group side into list with all patient indices
+            a_ind = np.zeros([num_perm, num_control + num_copd], dtype=int)
+            for li in range(num_perm):
+                a_ind[li, 0:min_num_g1_g2] = all_need_perm[li]
+
+
+
     else:
         raise ValueError('Given permutation modus not available. Choose between: '
                          'onesided, twosided or compare_clusters.')
@@ -85,11 +110,18 @@ def get_perm_array_ind(num_control, num_copd, modus = 'towsided'):
     # fill the remaining columns (for copd group) with remaining indices,
     # which werent used in the control permutation
     for i_row in range(0, num_perm):
-        c = num_control
+        if num_control != num_copd:
+            c = min_num_g1_g2
+        else:
+            c = num_control
         for item in pat_combination:
             if not item in a_ind[i_row]:
                 a_ind[i_row, c] = item
                 c = c + 1
+    # flip the index-results, if group2 is smaller then group1, such that
+    # order of indexes is correct (permuted indices group1, then group2)
+    if num_copd < num_control:
+        a_ind = np.fliplr(a_ind)
     # remove first and last entries which are e.g. ( 0123,4567 ) & (4567,0123)
     # if patient groups same number of patients
     if num_control == num_copd:
@@ -119,8 +151,8 @@ def get_perm_array_ind(num_control, num_copd, modus = 'towsided'):
     return a_sub_ind, num_perm
 
 #
-num_control=2
-a_ind, num_perm =  get_perm_array_ind(4,4, modus = 'compare_clusters')
-print(num_perm)
-print(2**num_control/2)
-print(a_ind)
+# num_control=2
+# a_ind, num_perm =  get_perm_array_ind(4,4, modus = 'compare_clusters')
+# print(num_perm)
+# print(2**num_control/2)
+# print(a_ind)
