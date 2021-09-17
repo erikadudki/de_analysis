@@ -15,6 +15,7 @@ import scipy.stats
 import time
 import math
 import os
+from pathlib import Path
 
 run_on_grid = False
 if run_on_grid:
@@ -100,34 +101,44 @@ def de_analysis(wd,
                 get all indices of all permutations, also mirrored
                 indices
             'compare_clusters': compare same group of patients but with
-                different cluster/celltype  annotations
+                different cluster/celltype  annotations. Naming scheme must be:
+                [PATIENTNAME_CLUSTERNAME]:
                 (e.g. [Pat1_cluster1,Pat2_cluster1,Pat3_cluster1] vs.
-                [Pat1_cluster2,Pat2_cluster2,Pat3_cluster2])
+                [Pat1_cluster2,Pat2_cluster2,Pat3_cluster2], or
+                [P1_1,P2_1,P3_1] vs [P1_2,P2_2,P3_2])
     Returns:
         --
         (saves DE-List)
 
     """
-
     # saving input patients
     #np.save(where_to_save + ct + '_pat_control_input',patients_group1)
 
     # create saving directory:
-    where_to_save = wd + 'de_results/'
-    if not os.path.exists(where_to_save):
-        os.mkdir(where_to_save)
+    # where_to_save = wd + 'de_results/'
+    # if not os.path.exists(where_to_save):
+    #     os.mkdir(where_to_save)
+    # create saving directory:
+    where_to_save = Path(os.path.join(wd, 'de_results/'))
+    where_to_save.mkdir(parents=True, exist_ok=True)
 
     # define directory of normalized data matrices for each patient & cluster
     if wd_data is None:
         wd_data = wd
 
     all_cells_path = wd_data + 'data/' + fileprename + '_'
-    f = open(where_to_save + 'information_' + fileprename + '_' + ct +'_filtered' + str(percent)+ '.txt', "w+")
+    f = open(os.path.join(where_to_save,'information_' + fileprename + '_' + ct
+                          +'_filtered' + str(percent) + '.txt'), "w+")
     f.write('Patients Group 1 Input: ' + str(patients_group1) + '\n')
     f.write('Patients Group 2 Input: ' + str(patients_group2) + '\n')
 
-    random_perm = False         # do only subset of random permutations? -> approximated nulldistribution
-    all_permutations = True     # do all possible permutations?         -> exact null distribution
+    if len(patients_group1) + len(patients_group2) > 20:
+        random_perm = True         # do only subset of random permutations? -> approximated nulldistribution
+        all_permutations = False     # do all possible permutations?         -> exact null distribution
+        print('Since total number of permutations would be too big, we do random permutations. That means no exact Null Distribution.')
+    else:
+        random_perm = False
+        all_permutations = True
 
     # Filtering genes with to low number of expressed cells ------------------
     startfilt = time.time()
@@ -143,7 +154,7 @@ def de_analysis(wd,
     endfilt = time.time()
     # how many genes remain after filtering: save
     if gene_from_row == 0:
-        f = open(where_to_save + 'information_'+ fileprename + '_' + ct + '.txt', "a+")
+        f = open(os.path.join(where_to_save, 'information_'+ fileprename + '_' + ct + '.txt'), "a+")
         f.write('Filtering with ' + str(percent*100) + '% means ' +
                 str(len(ind_filtered_genes)) + ' genes will be kept from total '
                 +str(np.shape(index_genes)[0])+ '\n')
@@ -160,8 +171,6 @@ def de_analysis(wd,
 
     for row_gene in range(gene_from_row,
                           gene_until_row):  # len(ind_filtered_genes)):
-
-        print(row_gene)
         # gives a single float value
         # psutil.cpu_percent()
         # gives an object with many fields
@@ -178,10 +187,13 @@ def de_analysis(wd,
                                 ct,
                                 ind_filtered_genes,
                                 row_gene,
-                                read_pd)
+                                read_pd,
+                                perm_modus)
 
-        f = open(where_to_save + 'information_'+ fileprename + '_' + ct + '_filtered' + str(percent)+'.txt', "a+")
-        f.write('\n Patients with only zero cells for a cluster are discarded: \n')
+        f = open(os.path.join(where_to_save, 'information_'+ fileprename + '_' +
+                              ct + '_filtered' + str(percent)+'.txt'), "a+")
+        f.write('\n Patients that are kept for the analysis: (Patients with only '
+                'zero cells for a cluster are discarded) \n')
         f.write('Gene ' + str(row_gene) + ': Patients Group 1 ' +
                 str(patients_group1) + '\n')
         f.write('Gene ' + str(row_gene) + ': Patients Group 2 :' +
@@ -290,9 +302,9 @@ def de_analysis(wd,
             pd_cells_Wilcoxon2 = results_main_wilc['nr_cells_Wilcoxon']
             pd_cells_Wilcoxon = pd.concat([pd_cells_Wilcoxon,pd_cells_Wilcoxon2])
         pd_cells_Wilcoxon.to_csv(
-            where_to_save + 'Nr_cells_Wilc_scores_' + ct + '_filteredGenes' + str(
+            os.path.join(where_to_save, 'Nr_cells_Wilc_scores_' + ct + '_filteredGenes' + str(
                 percent) + '_' + str(gene_from_row) + '-' + str(
-                gene_until_row))
+                gene_until_row)))
 
 
         if not test:
@@ -301,28 +313,28 @@ def de_analysis(wd,
                 idx_sign = str_percent.find('.')
                 str_percent = str_percent[:idx_sign] + '_' + str_percent[
                                                              idx_sign + 1:]
-            pd_wilc.to_csv(
-                where_to_save + 'wilc_scores_' + ct + '_filteredGenes' +
+            pd_wilc.to_csv(os.path.join(
+                where_to_save, 'wilc_scores_' + ct + '_filteredGenes' +
                 str_percent + '_' + str(gene_from_row) + '-' + str(
-                    gene_until_row) + '.csv')
-            pd_fc_all_cells.to_csv(
-                where_to_save + 'fc_all_cells_mean' + ct + '_filteredGenes' +
+                    gene_until_row) + '.csv'))
+            pd_fc_all_cells.to_csv(os.path.join(
+                where_to_save, 'fc_all_cells_mean' + ct + '_filteredGenes' +
                 str_percent + '_' + str(gene_from_row) + '-' + str(
-                    gene_until_row)+ '.csv')
-            pd_fc_expr_cells.to_csv(
-                where_to_save + 'fc_expr_cells_mean' + ct + '_filteredGenes' +
+                    gene_until_row)+ '.csv'))
+            pd_fc_expr_cells.to_csv(os.path.join(
+                where_to_save, 'fc_expr_cells_mean' + ct + '_filteredGenes' +
                 str_percent + '_' + str(gene_from_row) + '-' + str(
-                    gene_until_row)+ '.csv')
-            pd_fc_expr_cells.to_csv(
-                where_to_save + 'fc_expr_cells_median' + ct + '_filteredGenes' +
+                    gene_until_row)+ '.csv'))
+            pd_fc_expr_cells.to_csv(os.path.join(
+                where_to_save, 'fc_expr_cells_median' + ct + '_filteredGenes' +
                 str_percent + '_' + str(gene_from_row) + '-' + str(
-                    gene_until_row)+ '.csv')
+                    gene_until_row)+ '.csv'))
 
         # PERMUTATION-TEST-----------------------------------------------------
         # permute copd/control labels
         start = time.time()
         if random_perm:
-            num_perm = 200  # time: one gene:3.203282117843628 -> 4.3 Std, 4834 genes
+            num_perm = 10000  # time: one gene:3.203282117843628 -> 4.3 Std, 4834 genes
         elif all_permutations:
             # how many permutations
             if perm_modus=='onesided':
@@ -353,8 +365,6 @@ def de_analysis(wd,
                 if row_gene == 0:
                     print('number of permutations: ' + str(num_perm))
 
-
-
         Wilc_score_perm = np.zeros([num_perm, num_cross_val])
         U_perm = np.zeros([num_perm, num_cross_val])
         Wilc_nonzero_perm = np.zeros([num_perm, num_cross_val])
@@ -370,10 +380,10 @@ def de_analysis(wd,
                 patient_list_permuted = np.random.permutation(patient_list)
             elif all_permutations:
                 # get array with all combinations of permuted indices
-                if i_perm == 0:
-                    array_perm_ind, num_perm = get_perm_array_ind(len_pat_control,
-                                                        len_pat_copd,
-                                                        modus=perm_modus)#len(patients_group1),
+                # if i_perm == 0:
+                #     array_perm_ind, num_perm = get_perm_array_ind(len_pat_control,
+                #                                         len_pat_copd,
+                #                                         modus=perm_modus)#len(patients_group1),
                                                         #len(patients_group2))  # 5005 x 15
                 # rearrange the patient list with permuted indices
                 myorder = array_perm_ind[i_perm]
@@ -457,11 +467,6 @@ def de_analysis(wd,
                         # wmw_odds_perm[i_perm, run_idx] =np.nan
                         # Wilc_nonzero_perm[run_idx] = np.nan
                         # pval_nonzero_perm[run_idx] = np.nan
-
-
-
-
-
 
                     run_idx = run_idx + 1
 
@@ -793,10 +798,10 @@ def de_analysis(wd,
                 idx_sign = str_percent.find('.')
                 str_percent = str_percent[:idx_sign] + '_' + str_percent[
                                              idx_sign + 1:]
-            p_val_df.to_csv(where_to_save + 'pges_' + ct + '_filtered' +
+            p_val_df.to_csv(os.path.join(where_to_save,'pges_' + ct + '_filtered' +
                             str_percent + '_' + str(num_perm) + 'perm'
                             + '_' + str(gene_from_row) + '-' +
-                            str(gene_until_row)+'.csv')
+                            str(gene_until_row)+'.csv'))
 
     # save subset of de-results
     columns_to_select = ['p_val_medianWilc', 'p_val_meanWilc',
@@ -824,10 +829,10 @@ def de_analysis(wd,
     p_sub_df = p_val_df[columns_to_select]
 
     if not test:
-        p_sub_df.to_csv(where_to_save + 'p_val_' + ct + '_filtered' +
+        p_sub_df.to_csv(os.path.join(where_to_save,'p_val_' + ct + '_filtered' +
                         str_percent + '_' + str(num_perm) + 'perm'
                         + '_' + str(gene_from_row) + '-' +
-                        str(gene_until_row) + '.csv')
+                        str(gene_until_row) + '.csv'))
 
         # print('end of .........')
         # gives a single float value
