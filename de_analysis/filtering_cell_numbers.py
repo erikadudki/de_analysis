@@ -84,11 +84,10 @@ def filtering_cell_numbers(patients_group1,
     # create df: number of non-zero values for each gene, rows: genes,
     # columns: patients
     for i_pat in range(0, len(patient_full)):
+        path_full_control = all_cells_path + ct + '_' + patient_full[i_pat]
         if read_pd:
-            path_full_control = all_cells_path + ct + '_' + patient_full[i_pat]
             ending = '.tsv'
         else:
-            path_full_control = all_cells_path + ct + '_' + patient_full[i_pat]
             ending = '.npy'
 
         if not os.path.exists(path_full_control + ending):
@@ -328,8 +327,8 @@ def filtering_cell_numbers(patients_group1,
 
                     if read_pd:
                         filtered_all_cells_pat.to_csv(
-                            where_to_save + 'allCells_Filtered_' + str(percent) +
-                            'genes_'+ ct + '_' + patient_full[i_pat] + '.tsv',
+                            os.path.join(where_to_save, 'allCells_Filtered_' + str(percent) +
+                            'genes_'+ ct + '_' + patient_full[i_pat] + '.tsv'),
                             sep = '\t')
                     else:
                         # save_as_np(filtered_all_cells_pat,
