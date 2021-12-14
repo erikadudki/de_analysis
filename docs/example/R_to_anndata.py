@@ -28,7 +28,7 @@ folder = ['de10;1','de10;2','de10;3', 'de10;4', 'de10;5',
           'dm10;1', 'dm10;2', 'dm10;3','dm10;4', 'dm10;5',
           'dp10;1', 'dp10;2', 'dp10;3', 'dp10;4','dp10;5',
           'db10_1','db10;2', 'db10;3', 'db10;4','db10;5']
-folder = 'de10;1'
+folder = 'de10_ss4;1'
 # folder = ['de10;1','de10;2','de10;3', 'de10;4', 'de10;5']
 ## single file
 
@@ -41,25 +41,29 @@ library(scater, lib.loc="/home/erika/soft/R-3.6.0/library")
 #print(installed.packages()[, c("Package", "LibPath")])
 
 # filee <- paste(c('/home/erika/Documents/Projects/Muscat/muscat-comparison/data/sim_data/kang/rds_just_counts/',folder,'.rds'),collapse='')
-filee <- paste(c('/home/erika/PycharmProjects/DE-Analysis/src/code_tidy/data/',folder,'.rds'),collapse='')
+# filee <- paste(c('/home/erika/PycharmProjects/DE-Analysis/src/code_tidy/data/',folder,'.rds'),collapse='')
+filee <- paste(c('/home/erika/Documents/Projects/Evaluation_DE_method/sc_simulation_w_muscat/kang/rds_just_logcounts/',folder,'.rds'),collapse='')
+
 print(folder)
 de10_1_cou <- readRDS(filee)
 
 ##
 # save anndata file:
-de10_1_cou.write('/home/erika/PycharmProjects/DE-Analysis/src/code_tidy/data/'+folder+'.h5ad')
-
+de10_1_cou.write('/home/erika/Documents/Projects/Evaluation_DE_method/sc_simulation_w_muscat/kang/anndata/logcounts/'+folder+'.h5ad')
+de10_1_cou.add['gene_info'].to_csv('/home/erika/Documents/Projects/Muscat/'
+                               'muscat-comparison/data/sim_data/kang/anndata/'
+                               'logcounts/'+folder+'_gene_info.csv')
 ##scanpy normalization
 
-sc.pp.normalize_total(de10_1,target_sum=1e6)
+sc.pp.normalize_total(de10_1_cou,target_sum=1e6)
 ## save anndata
 
-de10_1.write('/home/erika/Documents/Projects/Muscat/muscat-comparison/data/'
-             'sim_data/kang/anndata/counts/'+folder+'.h5ad')
-
-de10_1.add['gene_info'].to_csv('/home/erika/Documents/Projects/Muscat/'
+de10_1_cou.write('/home/erika/Documents/Projects/Muscat/muscat-comparison/data/'
+             'sim_data/kang/anndata/logcounts/'+folder+'.h5ad')
+#
+de10_1_cou.add['gene_info'].to_csv('/home/erika/Documents/Projects/Muscat/'
                                'muscat-comparison/data/sim_data/kang/anndata/'
-                               'counts/'+folder+'_gene_info.csv')
+                               'logcounts/'+folder+'_gene_info.csv')
 
 
 ## multiple files ; folder = ['de10;1','de10;2','de10;3', 'de10;4', 'de10;5']
