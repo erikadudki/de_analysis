@@ -15,6 +15,74 @@ else:
 # from de_analysis import *
 # import de_analysis
 
+def sort_patient_names(patient_control, patient_copd):
+    pat_control_sorted = []
+    pat_copd_sorted = []
+    pat_list_final = []
+    pat_unique = []
+
+    # get patient-identifiers ('Pt1') and sort the list according to alphabet
+    for i_p in range(len(patient_control)):
+        pat_control_sorted.append(patient_control[i_p].split("_")[0])
+        pat_control_sorted.sort()
+        cluster_control = patient_control[i_p].split("_")[1]
+    for i_p in range(len(patient_copd)):
+        pat_copd_sorted.append(patient_copd[i_p].split("_")[0])
+        pat_copd_sorted.sort()
+        cluster_copd = patient_copd[i_p].split("_")[1]
+    # check that entries are the same / same order
+    if len(pat_copd_sorted) > len(pat_control_sorted):
+        longer_list = pat_copd_sorted
+        shorter_list = pat_control_sorted
+    elif len(pat_copd_sorted) < len(pat_control_sorted):
+        longer_list = pat_control_sorted
+        shorter_list = pat_copd_sorted
+    else:
+        # TODO
+        print("TODO... if length of input patients in Group1 equals "
+                   "length of input patients in Group2, but patients are not "
+              "the same...")
+        print(patient_copd)
+        print(patient_control)
+    
+    if len(pat_copd_sorted) != len(pat_control_sorted):
+        for i_p in range(len(longer_list)):
+            if longer_list[i_p] in shorter_list:
+                pat_list_final.append(longer_list[i_p])
+            else:
+                pat_unique.append(longer_list[i_p])
+        # entries that only exist in one patient list, append to the end
+        pat_list_final.extend(pat_unique)
+
+    if len(pat_copd_sorted) > len(pat_control_sorted):
+        pat_copd_final = pat_list_final.copy()
+        pat_control_final = pat_control_sorted.copy()
+    elif len(pat_copd_sorted) < len(pat_control_sorted):
+        pat_copd_final = pat_copd_sorted.copy()
+        pat_control_final = pat_list_final.copy()
+    else:
+        print('todo')
+        # TODO
+    
+    if len(pat_copd_sorted) == len(pat_control_sorted):
+        pat_copd_final = pat_copd_sorted
+        pat_control_final = pat_control_sorted
+        # if entries in both groups are not the same, TODO
+        if pat_copd_sorted != pat_control_sorted:
+            raise ValueError("TODO! If we have same number of patients, but"
+                             "patients are not the same (eg. for cluster "
+                             "comparison they should be the same, but with"
+                             "different cell clusters). If we have different"
+                             "patients, then permutation test needs to be "
+                             "adjusted!")
+    # add cluster names to patient-names
+    pat_copd_final = [ele + '_' + cluster_copd for ele in pat_copd_final]
+    pat_control_final = [ele + '_' + cluster_control for ele in pat_control_final]
+
+    return pat_control_final, pat_copd_final
+
+
+
 
 def create_patient_list(patient_control,
                         patient_copd,
@@ -22,7 +90,8 @@ def create_patient_list(patient_control,
                         ct,
                         ind_filtered_genes,
                         row_gene,
-                        read_pd):
+                        read_pd,
+                        perm_modus='twosided'):
     """
     READs DATA ---------------------------------------------------------------
     create a list with np.arrays (with the expression values of the cells
@@ -74,7 +143,6 @@ def create_patient_list(patient_control,
         else:
             print('create patient list - read numpy ---------------------')
 
-
     patient_list = []
     patient_list_nonzero = []
     pd_sizes = pd.DataFrame([], columns=['total_cells', 'expressed_cells',
@@ -87,164 +155,195 @@ def create_patient_list(patient_control,
                                                  'min_perc_COPD',
                                                  'max_perc_COPD'],
                                     index=['gene'])
+    if read_pd:
+        ending = '.tsv'
+    else:
+        ending = '.npy'
 
-    # CONTROL
+    # check that order of patients is the same in both groups, or reorder
+    if perm_modus == 'compare_clusters':
+        patient_control, patient_copd = \
+            sort_patient_names(patient_control,patient_copd)
+
+    # Check if Patients-files exist and create list of patients that exist!!!
     pat_to_discard = []
+    pat_to_keep_control = []
     for i_pat_control in range(0, len(patient_control)):
-        if read_pd:
-            path_full_control = all_cells_path + ct + '_' + patient_control[
+        path_full_control = all_cells_path + ct + '_' + patient_control[
             i_pat_control]
-            ending = '.tsv'
-        else:
-            path_full_control = all_cells_path + ct + '_' + patient_control[
-            i_pat_control]
-            ending = '.npy'
 
         if not os.path.exists(path_full_control + ending):
             pat_to_discard.append(patient_control[i_pat_control])
             warnings.warn('Patient ' + patient_control[i_pat_control] +
                           ' does not exist. Will be discarded! (create_patient_list)')
         else:
+            # check if there are entries
             if read_pd:
-                all_cells_pat_control = pd.read_csv(
-                    path_full_control + ending, sep="\t", index_col=0,
-                    skiprows=ind_filtered_genes[row_gene], nrows=1)
-                control_np = all_cells_pat_control.to_numpy()[0]
+                try:
+                    all_cells_pat_control = pd.read_csv(
+                        path_full_control + ending, sep="\t", index_col=0,
+                        usecols=[0,1,2],
+                        nrows=1)
+                except:
+                    all_cells_pat_control = pd.read_csv(
+                        path_full_control + ending, sep="\t", index_col=0,
+                        nrows=1)
             else:
-                all_cells_pat_control_full = \
-                    as_numpy.read_numpy_to_df(path_full_control)
-                # get row of interest
                 all_cells_pat_control = \
-                    all_cells_pat_control_full.iloc[ind_filtered_genes[row_gene],:] # is Series
-                control_np = np.transpose(all_cells_pat_control.to_numpy())
-                # print('control numpy pandas and numpy numpy equal: ' +
-                #       str(np.array_equal(control_np,control_np2)))
-            # else:
-            #     print('ddfs')
-
-
-            # nonzero values ( only expressed values )
-            control_np_nonzero = control_np[np.nonzero(control_np)]
-
-            # if no values are available, discard patient, such that wilcoxon rank
-            # sum test can be calculated, otherwise there will be written one NaN
-            # and then the whole method doesnt work for this gene.
-            if np.shape(control_np)[0] != 0:
-                patient_list.append(control_np)
-                patient_list_nonzero.append(control_np_nonzero)
-            # discard patient from patient-name-list
-            else:
+                    as_numpy.read_numpy_to_df(path_full_control,
+                                              read_only_col=True)
+            if np.shape(all_cells_pat_control)[1] < 1:
                 pat_to_discard.append(patient_control[i_pat_control])
-
-            len_pat_control = len(patient_list)
-
-            # ######
-            # number of cells: all and only expressed / percentage
-            # get number of all measured cells
-            #d = all_cells.iloc[i_gene, all_cells.columns.str.contains('Pt')].values
-
-            # get number of nonzero values (only expressed cells)
-            #d_nonzero = d[np.nonzero(d)]
-            pd_sizes.iloc[i_pat_control, 0] = np.shape(control_np)[0]
-            pd_sizes.iloc[i_pat_control, 1] = np.shape(control_np_nonzero)[0]
-            if np.shape(control_np)[0] == 0:
-                pd_sizes.iloc[i_pat_control, 2] = 0
+                warnings.warn('Patient ' + patient_control[i_pat_control] +
+                              ' has not cell expression entries. Table is empty. '
+                              'Will be discarded! (create_patient_list)')
             else:
-                pd_sizes.iloc[i_pat_control, 2] = np.shape(control_np_nonzero)[0] * 100 / np.shape(control_np)[0]
-            # #######
-
-    # if we have patients which should be discarded (saved in list: pat_to_discard)
-    if len(pat_to_discard) != 0:
-        patient_control = [ele for ele in patient_control if ele not in pat_to_discard]
-
-    pd_sizes_summary['mean_percentage_control'] = np.mean(pd_sizes['percentage'])
-    pd_sizes_summary['min_perc_control'] = np.min(pd_sizes['percentage'])
-    pd_sizes_summary['max_perc_control'] = np.max(pd_sizes['percentage'])
-
-
-
+                pat_to_keep_control.append(patient_control[i_pat_control])
 
     # COPD ------------------------------------------------------------------
     # create a list with np.arrays of all copd patients, ONE GENE
-    len_pat_copd_bevor = len(patient_copd)
-    pat_to_discard = []
+    # Check if Patients-files exist and create list of patients that exist!!!
+    pat_to_keep_copd = []
     for i_pat_copd in range(0, len(patient_copd)):
-        if read_pd:
-            path_full_copd = all_cells_path + ct + '_' + patient_copd[i_pat_copd]
-            ending = '.tsv'
-        else:
-            path_full_copd = all_cells_path + ct + '_' + patient_copd[i_pat_copd]
-            ending = '.npy'
+        path_full_copd = all_cells_path + ct + '_' + patient_copd[
+            i_pat_copd]
 
         if not os.path.exists(path_full_copd + ending):
             pat_to_discard.append(patient_copd[i_pat_copd])
             warnings.warn('Patient ' + patient_copd[i_pat_copd] +
                           ' does not exist. Will be discarded! (create_patient_list)')
         else:
+            # check if there are entries
             if read_pd:
-                all_cells_pat_copd = pd.read_csv(
-                    path_full_copd + ending, sep="\t", index_col=0,
-                    skiprows=ind_filtered_genes[row_gene], nrows=1)
-                copd_np = all_cells_pat_copd.to_numpy()[0]
+                try:
+                    all_cells_pat_copd = pd.read_csv(
+                        path_full_copd + ending, sep="\t", index_col=0,
+                        usecols=[0, 1, 2], nrows=1)
+                except:
+                    all_cells_pat_copd = pd.read_csv(
+                        path_full_copd + ending, sep="\t", index_col=0,
+                        nrows=1)
             else:
-                all_cells_pat_copd_full = \
-                    as_numpy.read_numpy_to_df(path_full_copd)
-                # get row of interest
                 all_cells_pat_copd = \
-                    all_cells_pat_copd_full.iloc[ind_filtered_genes[row_gene], :]  # is Series
-                copd_np = all_cells_pat_copd.to_numpy()
-
-                # np.array_equal(copd_np,copd_np2)
-            # else:
-            #     print('ldfsk')
-
-            # all_cells_pat_copd = pd.read_csv(
-            #     path_full_copd, sep="\t", index_col=None, nrows=1)
-            # ncol = np.shape(all_cells_pat_copd)[1]
-            # all_cells_pat_copd = pd.read_csv(
-            #     path_full_copd, sep="\t", index_col=0, usecols=range(1, ncol),
-            #     skiprows=ind_filtered_genes[row_gene], nrows=1)
-            # copd_np = all_cells_pat_copd.to_numpy()[0]
-
-            # nonzero values ( only expressed values )
-            copd_np_nonzero = copd_np[np.nonzero(copd_np)]
-
-            # if no values are available, discard patient, such that wilcoxon rank
-            # sum test can be calculated, otherwise there will be written one NaN
-            # and then the whole method doesnt work for this gene.
-            if np.shape(copd_np)[0] != 0:
-                patient_list.append(copd_np)
-                patient_list_nonzero.append(copd_np_nonzero)
-            else:
-                # merke patient to discard patient from patient-name-list
-                # patient_copd.remove(patient_copd[i_pat_copd])
+                    as_numpy.read_numpy_to_df(path_full_copd,
+                                              read_only_col=True)
+            if np.shape(all_cells_pat_copd)[1] < 1:
                 pat_to_discard.append(patient_copd[i_pat_copd])
-
-            # how many copd patients are actually read in
-            len_pat_copd = len(patient_list) - len_pat_control
-
-            # ######
-            # number of cells: all and only expressed / percentage
-            # get number of all measured cells
-            # d = all_cells.iloc[i_gene, all_cells.columns.str.contains('Pt')].values
-            # get number of nonzero values (only expressed cells)
-            # d_nonzero = d[np.nonzero(d)]
-            #pd_sizes.iloc[i_pat_copd, 0] = np.shape(control_np)[0]
-            #pd_sizes.iloc[i_pat_copd, 1] = np.shape(control_np_nonzero)[0]
-            if np.shape(copd_np)[0] == 0:
-                pd_sizes.loc[patient_copd[i_pat_copd], 'percentage_copd'] = 0
+                warnings.warn('Patient ' + patient_copd[i_pat_copd] +
+                              ' has not cell expression entries. Table is empty. '
+                              'Will be discarded! (create_patient_list)')
             else:
-                pd_sizes.loc[patient_copd[i_pat_copd], 'percentage_copd'] = \
-                    np.shape(copd_np_nonzero)[0] * 100 / np.shape(copd_np)[0]
+                pat_to_keep_copd.append(patient_copd[i_pat_copd])
 
-    # if we have patients which should be discarded (saved in list: pat_to_discard)
-    if len(pat_to_discard) != 0:
-        patient_copd = [ele for ele in patient_copd if ele not in pat_to_discard]
+    # check order of both patient lists to keep, for the modus compare-clusters
+    # and not same number of patients, it has to be in the same order, and all
+    # the patients that only exist in one group needs to be in the end
+    if perm_modus == 'compare_clusters':
+        len_g1 = len(pat_to_keep_control)
+        len_g2 = len(pat_to_keep_copd)
+        print('pat_to_keep_G1: ' + str(pat_to_keep_control))
+        print('pat_to_keep_G2: ' + str(pat_to_keep_copd))
+        for i_check in range(0,min(len_g1,len_g2)):
+            if not pat_to_keep_control[i_check] == pat_to_keep_copd[i_check]:
+                ValueError("TODO: Implement the case, if the patients do not "
+                           "coincide between the two groups. Could happen, if "
+                           "on the way patients were discarded, because their"
+                           "tables were empty. The patient lists should have"
+                           "the same order and same first name. (for "
+                           "the case 'compare clusters')")
+
+
+
+    # ----------------------------------------------
+    # Start constructing the patient lists with the cell expressions, with the
+    # patients order we just generated.
+    # -----------------------------------------------
+    # CONTROL
+    len_pat_control = len(pat_to_keep_control)
+    for i_pat_control in range(0, len(pat_to_keep_control)):
+        path_control = all_cells_path + ct + '_' + pat_to_keep_control[
+            i_pat_control]
+        if read_pd:
+            all_cells_pat_control = pd.read_csv(
+                path_control + ending, sep="\t", index_col=0,
+                skiprows=ind_filtered_genes[row_gene], nrows=1)
+            control_np = all_cells_pat_control.to_numpy()[0]
+        else:
+            all_cells_pat_control_full = \
+                as_numpy.read_numpy_to_df(path_control)
+            # get row of interest
+            all_cells_pat_control = \
+                all_cells_pat_control_full.iloc[ind_filtered_genes[row_gene],:] # is Series
+            control_np = np.transpose(all_cells_pat_control.to_numpy())
+
+        # nonzero values ( only expressed values )
+        control_np_nonzero = control_np[np.nonzero(control_np)]
+
+        # fill patient_list: actual list of cell expressions, for each patient
+        patient_list.append(control_np)
+        patient_list_nonzero.append(control_np_nonzero)
+        # number of cells: all and only expressed / percentage
+        # get number of all measured cells
+        #d = all_cells.iloc[i_gene, all_cells.columns.str.contains('Pt')].values
+
+        # get number of nonzero values (only expressed cells)
+        #d_nonzero = d[np.nonzero(d)]
+        pd_sizes.iloc[i_pat_control, 0] = np.shape(control_np)[0]
+        pd_sizes.iloc[i_pat_control, 1] = np.shape(control_np_nonzero)[0]
+        if np.shape(control_np)[0] == 0:
+            pd_sizes.iloc[i_pat_control, 2] = 0
+        else:
+            pd_sizes.iloc[i_pat_control, 2] = np.shape(control_np_nonzero)[0] \
+                                              * 100 / np.shape(control_np)[0]
+
+    pd_sizes_summary['mean_percentage_control'] = np.mean(pd_sizes['percentage'])
+    pd_sizes_summary['min_perc_control'] = np.min(pd_sizes['percentage'])
+    pd_sizes_summary['max_perc_control'] = np.max(pd_sizes['percentage'])
+
+
+    # COPD ------------------------------------------------------------------
+    len_pat_copd = len(pat_to_keep_copd)
+    for i_pat_copd in range(0, len(pat_to_keep_copd)):
+        path_copd = all_cells_path + ct + '_' + pat_to_keep_copd[i_pat_copd]
+        if read_pd:
+            all_cells_pat_copd = pd.read_csv(
+                path_copd + ending, sep="\t", index_col=0,
+                skiprows=ind_filtered_genes[row_gene], nrows=1)
+            copd_np = all_cells_pat_copd.to_numpy()[0]
+        else:
+            all_cells_pat_copd_full = \
+                as_numpy.read_numpy_to_df(path_copd)
+            # get row of interest
+            all_cells_pat_copd = \
+                all_cells_pat_copd_full.iloc[ind_filtered_genes[row_gene], :]  # is Series
+            copd_np = all_cells_pat_copd.to_numpy()
+            # copd_np = np.transpose(all_cells_pat_copd.to_numpy())#?????
+
+        # nonzero values ( only expressed values )
+        copd_np_nonzero = copd_np[np.nonzero(copd_np)]
+
+        patient_list.append(copd_np)
+        patient_list_nonzero.append(copd_np_nonzero)
+
+        # ######
+        # number of cells: all and only expressed / percentage
+        # get number of all measured cells
+        # d = all_cells.iloc[i_gene, all_cells.columns.str.contains('Pt')].values
+        # get number of nonzero values (only expressed cells)
+        # d_nonzero = d[np.nonzero(d)]
+        pd_sizes.iloc[i_pat_copd, 0] = np.shape(control_np)[0]
+        pd_sizes.iloc[i_pat_copd, 1] = np.shape(control_np_nonzero)[0]
+        if np.shape(copd_np)[0] == 0:
+            pd_sizes.loc[pat_to_keep_copd[i_pat_copd], 'percentage_copd'] = 0
+        else:
+            pd_sizes.loc[pat_to_keep_copd[i_pat_copd], 'percentage_copd'] = \
+                np.shape(copd_np_nonzero)[0] * 100 / np.shape(copd_np)[0]
 
     pd_sizes_summary['mean_percentage_COPD'] = np.mean(
         pd_sizes['percentage_copd'])
     pd_sizes_summary['min_perc_COPD'] = np.min(pd_sizes['percentage_copd'])
     pd_sizes_summary['max_perc_COPD'] = np.max(pd_sizes['percentage_copd'])
 
+
     return patient_list, patient_list_nonzero, pd_sizes_summary, \
-        len_pat_control, len_pat_copd, patient_control, patient_copd
+        len_pat_control, len_pat_copd, pat_to_keep_control, pat_to_keep_copd
