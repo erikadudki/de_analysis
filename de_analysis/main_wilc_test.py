@@ -4,6 +4,9 @@ import math
 import time
 import pandas as pd
 from scipy.stats import tiecorrect, rankdata
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 # from de_analysis import *
 # import de_analysis
 # from de_analysis import *
@@ -58,6 +61,9 @@ def main_wilc_test(len_pat_control,
             Wilc_score[run_idx], pval[run_idx] = \
                 scipy.stats.ranksums(patient_list[i_pat_ctl],
                                      patient_list[i_pat_copd])
+#
+
+
             n1 = len(patient_list[i_pat_ctl])
             n2 = len(patient_list[i_pat_copd])
 
@@ -86,6 +92,23 @@ def main_wilc_test(len_pat_control,
             else:
                 wmw_odds[run_idx] = U2[run_idx]/(n1*n2-U2[run_idx])
 
+
+            # plt.figure()
+            # plt.hist(patient_list[i_pat_ctl], bins=40, alpha=0.5,
+            #          edgecolor='k')
+            # plt.hist(patient_list[i_pat_copd], bins=40, alpha=0.5,
+            #          edgecolor='k')
+            # plt.title('pat_A ' + str(i_pat_ctl) + ', patB ' + str(
+            #     i_pat_copd - len_pat_control) +
+            #           ', Wilc-score: ' + str(np.round(Wilc_score[run_idx], 3)) +
+            #           '\n U=' + str(U2[run_idx]) + ', Effectsize=' +
+            #           str(np.round(Effectsz[run_idx],3)) +
+            #                '\n WMW_odds=' + str(np.round(wmw_odds[run_idx],3)))
+            # plt.savefig('/home/erika/Documents/Projects/Evaluation_DE_method/'
+            #             'sc_simulation_w_sparsim/simulations/'
+            #             'final3_lognormal_sampling/Brain_10X__BIM1_ss1_check/'
+            #             'de_results/hist_ipatA' + str(i_pat_ctl) + '_ipatB' +
+            #             str(i_pat_copd - len_pat_control) + '.png',bbox_inches='tight')
 
             # save Wilc-score and percentage of expressed cells
             nr_cells_Wilcoxon.loc[run_idx,'z-score']= Wilc_score[run_idx]
