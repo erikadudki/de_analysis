@@ -23,13 +23,13 @@ if run_on_grid:
     from filtering_cell_numbers import filtering_cell_numbers
     from create_patient_list import create_patient_list
     from main_wilc_test import main_wilc_test
-    import as_numpy
+    #import as_numpy
 else:
     from .get_perm_array_ind import get_perm_array_ind
     from .filtering_cell_numbers import filtering_cell_numbers
     from .create_patient_list import create_patient_list
     from .main_wilc_test import main_wilc_test
-    from de_analysis import as_numpy
+    #from de_analysis import as_numpy
     import psutil
 
 # from de_analysis import *
@@ -305,7 +305,6 @@ def de_analysis(wd,
             os.path.join(where_to_save, 'Nr_cells_Wilc_scores_' + ct + '_filteredGenes' + str(
                 percent) + '_' + str(gene_from_row) + '-' + str(
                 gene_until_row)))
-
 
         if not test:
             str_percent = str(percent)

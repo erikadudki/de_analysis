@@ -52,7 +52,7 @@ def get_perm_array_ind(num_control, num_copd, modus = 'towsided'):
         # from pat_combination (all patient indices) get 6 permuted values
         comb1 = comb(pat_combination, num_control)
         for i in list(comb1):
-            # print(i)
+
             a_ind[li, 0:num_control] = np.asarray(i)  # i:tuple
             li = li + 1
         min_num_g1_g2 = num_control # min_num_g1_g2=num_control, because we fill a_ind with the permutations until num_control, so it needs to fill from the position num_control+1
